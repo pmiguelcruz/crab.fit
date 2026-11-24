@@ -17,6 +17,7 @@ import { useTranslation } from '/src/i18n/client'
 import timezones from '/src/res/timezones.json'
 import useRecentsStore from '/src/stores/recentsStore'
 import { calculateTable, expandTimes, makeClass } from '/src/utils'
+import { slotMinutes } from '/src/utils/slotSize'
 
 import styles from './page.module.scss'
 import SubmissionReceipt from './SubmissionReceipt'
@@ -31,7 +32,10 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
   const { weekStart, timeFormat } = useCalendarSettings(i18n.language)
 
   const [people, setPeople] = useState<PersonResponse[]>([])
-  const expandedTimes = useMemo(() => expandTimes(event?.times ?? []), [event?.times])
+  const size = event?.slot_size
+  const datesOnly = size === 'day'
+  const interval = datesOnly ? undefined : slotMinutes(size)
+  const expandedTimes = useMemo(() => size ? event?.times ?? [] : expandTimes(event?.times ?? []), [event?.times, size])
 
   const [user, setUser] = useState<PersonLogin>()
   const [draft, setDraft] = useState<string[]>([])
@@ -51,11 +55,11 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
   const [table, setTable] = useState<ReturnType<typeof calculateTable>>()
 
   useEffect(() => {
-    if (event && expandedTimes.length > 0) {
+    if (event && !datesOnly && expandedTimes.length > 0) {
       if (!tableWorker.current) {
         tableWorker.current = window.Worker ? new Worker(new URL('/src/workers/calculateTable', import.meta.url)) : undefined
       }
-      const args = { times: expandedTimes, locale: i18n.language, timeFormat, timezone, weekStart }
+      const args = { times: expandedTimes, locale: i18n.language, timeFormat, timezone, weekStart, interval }
       if (tableWorker.current) {
         tableWorker.current.onmessage = (e: MessageEvent<ReturnType<typeof calculateTable>>) => setTable(e.data)
         tableWorker.current.postMessage(args)
@@ -64,7 +68,7 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
         setTable(calculateTable(args))
       }
     }
-  }, [event, expandedTimes, i18n.language, timeFormat, timezone, weekStart])
+  }, [datesOnly, event, expandedTimes, i18n.language, interval, timeFormat, timezone, weekStart])
 
   // Add this event to recents
   const addRecent = useRecentsStore(state => state.addRecent)
@@ -160,47 +164,49 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
           if (person) setReceipt(undefined)
         }} />
 
-        <SelectField
-          label={t('form.timezone')}
-          name="timezone"
-          id="timezone"
-          isInline
-          value={timezone}
-          onChange={event => setTimezone(event.currentTarget.value)}
-          options={timezones}
-        />
+        {!datesOnly && <>
+          <SelectField
+            label={t('form.timezone')}
+            name="timezone"
+            id="timezone"
+            isInline
+            value={timezone}
+            onChange={event => setTimezone(event.currentTarget.value)}
+            options={timezones}
+          />
 
-        {event?.timezone && event.timezone !== timezone && <p>
-          <Trans i18nKey="form.created_in_timezone" t={t} i18n={i18n}>
-            {/* eslint-disable-next-line */}
-            {/* @ts-ignore */}
-            _<strong>{{timezone: event.timezone}}</strong>
-            _<a href="#" onClick={e => {
-              e.preventDefault()
-              setTimezone(event.timezone)
-            }}>_</a>_
-          </Trans>
-        </p>}
-
-        {((
-          Intl.DateTimeFormat().resolvedOptions().timeZone !== timezone
-          && (event?.timezone && event.timezone !== Intl.DateTimeFormat().resolvedOptions().timeZone)
-        ) || (
-          event?.timezone === undefined
-          && Intl.DateTimeFormat().resolvedOptions().timeZone !== timezone
-        )) && (
-          <p>
-            <Trans i18nKey="form.local_timezone" t={t} i18n={i18n}>
+          {event?.timezone && event.timezone !== timezone && <p>
+            <Trans i18nKey="form.created_in_timezone" t={t} i18n={i18n}>
               {/* eslint-disable-next-line */}
               {/* @ts-ignore */}
-              _<strong>{{timezone: Intl.DateTimeFormat().resolvedOptions().timeZone}}</strong>
+              _<strong>{{timezone: event.timezone}}</strong>
               _<a href="#" onClick={e => {
                 e.preventDefault()
-                setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone)
+                setTimezone(event.timezone)
               }}>_</a>_
             </Trans>
-          </p>
-        )}
+          </p>}
+
+          {((
+            Intl.DateTimeFormat().resolvedOptions().timeZone !== timezone
+            && (event?.timezone && event.timezone !== Intl.DateTimeFormat().resolvedOptions().timeZone)
+          ) || (
+            event?.timezone === undefined
+            && Intl.DateTimeFormat().resolvedOptions().timeZone !== timezone
+          )) && (
+            <p>
+              <Trans i18nKey="form.local_timezone" t={t} i18n={i18n}>
+                {/* eslint-disable-next-line */}
+                {/* @ts-ignore */}
+                _<strong>{{timezone: Intl.DateTimeFormat().resolvedOptions().timeZone}}</strong>
+                _<a href="#" onClick={e => {
+                  e.preventDefault()
+                  setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone)
+                }}>_</a>_
+              </Trans>
+            </p>
+          )}
+        </>}
       </Content>
     </Section>
 
@@ -239,12 +245,15 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
     {tab === 'group' ? <AvailabilityViewer
       times={expandedTimes}
       people={people}
+      datesOnly={datesOnly}
       table={table}
     /> : user && <>
       <AvailabilityEditor
         eventId={event?.id}
         times={expandedTimes}
         timezone={timezone}
+        datesOnly={datesOnly}
+        interval={interval}
         value={draft}
         onChange={value => { if (!submitting) setDraft(value) }}
         table={table}
@@ -256,7 +265,7 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
             <Button isLoading={submitting} disabled={submitting} onClick={removeResponse}>{t('submission.remove')}</Button>
             <Button isSecondary disabled={submitting} onClick={() => setConfirmRemoval(false)}>{t('submission.cancel')}</Button>
           </> : <>
-            <Button isLoading={submitting} disabled={submitting || !table} onClick={submit}>
+            <Button isLoading={submitting} disabled={submitting || (!datesOnly && !table)} onClick={submit}>
               {t('submission.submit')}
             </Button>
             <Button isSecondary disabled={submitting} onClick={() => setConfirmRemoval(true)}>{t('submission.remove_self')}</Button>

@@ -9,17 +9,18 @@ import { Temporal } from '@js-temporal/polyfill'
 export const convertTimesToDates = (times: string[], timezone: string, weekStart: 0 | 1 = 0): Temporal.ZonedDateTime[] => {
   if (times[0]?.length === 13) return times.map(time => parseSpecificDate(time).withTimeZone(timezone))
 
-  // Fit each weekly UTC slot inside a single local calendar week. Pick a full
-  // 168-hour example week when a daylight-saving transition changes its length.
+  const utcStart = referenceWeekStart(timezone, weekStart).toZonedDateTime(timezone).withTimeZone('UTC')
+  return times.map(time => parseWeekdayDate(time, utcStart).withTimeZone(timezone))
+}
+
+/** Use a full local week when this week's clock change shifts a recurring slot. */
+export const referenceWeekStart = (timezone: string, weekStart: 0 | 1) => {
   const today = Temporal.Now.plainDateISO(timezone)
   const firstDay = today.subtract({ days: (today.dayOfWeek - weekStart + 7) % 7 })
-  let start = firstDay.toZonedDateTime(timezone)
-  const nextStart = firstDay.add({ weeks: 1 }).toZonedDateTime(timezone)
-  if (nextStart.epochMilliseconds - start.epochMilliseconds !== 7 * 24 * 60 * 60 * 1000) {
-    start = nextStart
-  }
-  const utcStart = start.withTimeZone('UTC')
-  return times.map(time => parseWeekdayDate(time, utcStart).withTimeZone(timezone))
+  const nextWeek = firstDay.add({ weeks: 1 })
+  const duration = nextWeek.toZonedDateTime(timezone).epochMilliseconds
+    - firstDay.toZonedDateTime(timezone).epochMilliseconds
+  return duration === 7 * 24 * 60 * 60 * 1000 ? firstDay : nextWeek
 }
 
 // Parse from UTC `HHmm-DDMMYYYY` format into a ZonedDateTime in UTC

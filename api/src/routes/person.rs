@@ -7,7 +7,7 @@ use axum::{
     Json, TypedHeader,
 };
 use base64::{engine::general_purpose, Engine};
-use common::{Adaptor, Person};
+use common::{Adaptor, Event, Person};
 
 use crate::{
     errors::ApiError,
@@ -36,13 +36,12 @@ pub async fn get_people<A: Adaptor>(
 ) -> ApiResult<Vec<PersonResponse>, A> {
     let adaptor = &state.lock().await.adaptor;
 
-    let times = adaptor
+    let event = adaptor
         .get_event(event_id.clone())
         .await
         .map_err(ApiError::AdaptorError)?
-        .ok_or(ApiError::NotFound)?
-        .times;
-    let slots = expand_times(&times);
+        .ok_or(ApiError::NotFound)?;
+    let slots = available_slots(&event);
     let people = adaptor
         .get_people(event_id)
         .await
@@ -84,12 +83,11 @@ pub async fn get_person<A: Adaptor>(
 ) -> Result<([(header::HeaderName, &'static str); 1], Json<PersonLogin>), ApiError<A>> {
     let mut state = state.lock().await;
     let adaptor = &state.adaptor;
-    let times = adaptor
+    let event = adaptor
         .get_event(event_id.clone())
         .await
         .map_err(ApiError::AdaptorError)?
-        .ok_or(ApiError::NotFound)?
-        .times;
+        .ok_or(ApiError::NotFound)?;
     let password = parse_password(bearer);
     let existing_people = adaptor
         .get_people(event_id.clone())
@@ -145,7 +143,7 @@ pub async fn get_person<A: Adaptor>(
             PARTICIPANT_TTL,
         )
         .ok_or(ApiError::Unavailable)?;
-    let person = active_response(person, &expand_times(&times));
+    let person = active_response(person, &available_slots(&event));
     Ok((
         [(header::CACHE_CONTROL, "no-store")],
         Json(PersonLogin { person, token }),
@@ -182,13 +180,12 @@ pub async fn update_person<A: Adaptor>(
     let token = participant_token(&state.sessions, &bearer, &event_id, &person_name)?;
 
     let adaptor = &state.adaptor;
-    let times = adaptor
+    let event = adaptor
         .get_event(event_id.clone())
         .await
         .map_err(ApiError::AdaptorError)?
-        .ok_or(ApiError::NotFound)?
-        .times;
-    let slots = expand_times(&times);
+        .ok_or(ApiError::NotFound)?;
+    let slots = available_slots(&event);
     let mut availability = input.availability;
     if availability.iter().any(|slot| !slots.contains(slot)) {
         return Err(ApiError::InvalidInput);
@@ -267,9 +264,13 @@ fn participant_token<'a, A: Adaptor>(
     }
 }
 
-fn expand_times(times: &[String]) -> HashSet<String> {
-    // Use the same quarter-hour grid as the frontend.
-    times
+fn available_slots(event: &Event) -> HashSet<String> {
+    if event.slot_size.is_some() {
+        return event.times.iter().cloned().collect();
+    }
+    // Legacy events store hourly markers and collect quarter-hour responses.
+    event
+        .times
         .iter()
         .filter_map(|time| Some((time.get(..2)?, time.get(4..)?)))
         .flat_map(|(hour, date)| {

@@ -48,12 +48,47 @@ pub struct Stats {
 
 #[derive(Clone)]
 pub struct Event {
+    pub slot_size: Option<SlotSize>,
     pub id: String,
     pub name: String,
     pub created_at: DateTime<Utc>,
     pub visited_at: DateTime<Utc>,
     pub times: Vec<String>,
     pub timezone: String,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SlotSize {
+    QuarterHour,
+    HalfHour,
+    Hour,
+    Day,
+}
+
+impl SlotSize {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::QuarterHour => "quarter_hour",
+            Self::HalfHour => "half_hour",
+            Self::Hour => "hour",
+            Self::Day => "day",
+        }
+    }
+}
+
+impl std::str::FromStr for SlotSize {
+    type Err = ();
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "quarter_hour" => Ok(Self::QuarterHour),
+            "half_hour" => Ok(Self::HalfHour),
+            "hour" => Ok(Self::Hour),
+            "day" => Ok(Self::Day),
+            _ => Err(()),
+        }
+    }
 }
 
 #[derive(Clone)]

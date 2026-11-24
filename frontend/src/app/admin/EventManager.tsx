@@ -81,7 +81,7 @@ const EventManager = () => {
     setError('')
     try {
       const name = t('copy_name', { name: [...event.name].slice(0, 245).join('') })
-      const copy = await createEvent({ name, times: event.times, timezone: event.timezone })
+      const copy = await createEvent({ name, times: event.times, timezone: event.timezone, slot_size: event.slot_size })
       setEvents(events => [copy, ...(events ?? [])])
       setMessage(t('duplicated', { name: copy.name }))
     } catch {

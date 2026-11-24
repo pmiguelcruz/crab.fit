@@ -61,6 +61,15 @@
     "clipboard_message": "People available on {{date}}"
   },
 
+  "days": {
+    "calendar": "Poll dates",
+    "month": "Month",
+    "editor_info": "Select the dates you can attend.",
+    "group_info": "Select a date to see who can attend.",
+    "count_one": "{{date}}, {{count}} available",
+    "count_other": "{{date}}, {{count}} available",
+    "nobody": "Nobody is available on this date."
+  },
   "submission": {
     "submit": "Submit availability",
     "remove_self": "Remove my response",

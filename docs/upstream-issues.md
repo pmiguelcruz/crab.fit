@@ -7,6 +7,8 @@ On November 23, 2026, the upstream repository had 56 open issues. This records t
 - The heatmap and its legend use the actual minimum and maximum attendance across the available slots. [#363](https://github.com/GRA0007/crab.fit/issues/363), [#311](https://github.com/GRA0007/crab.fit/issues/311)
 - The monthly picker renders every date in a complete Sunday- or Monday-start week. January 31, 2027 was selected in WebKit. [#362](https://github.com/GRA0007/crab.fit/issues/362)
 - The create form accepts multiple time windows and separate windows for individual dates and weekdays. [#361](https://github.com/GRA0007/crab.fit/issues/361), [#317](https://github.com/GRA0007/crab.fit/issues/317), [#289](https://github.com/GRA0007/crab.fit/issues/289)
+- Timed polls can use 15-, 30-, or 60-minute choices. Existing polls retain their original quarter-hour grid. The API accepts only the stored choices, and both occurrences of a repeated local time remain separately selectable. [#290](https://github.com/GRA0007/crab.fit/issues/290)
+- Dates-only polls offer a calendar for specific dates or recurring weekdays, attendance counts, and date receipts. Admin edits and duplication keep the poll type. [#291](https://github.com/GRA0007/crab.fit/issues/291)
 - The About section no longer displays the Android download button. Play Store availability is governed separately. [#360](https://github.com/GRA0007/crab.fit/issues/360)
 - The README links to the upstream hosted site and the privacy page links to the current Vercel notice. [#357](https://github.com/GRA0007/crab.fit/issues/357), [#342](https://github.com/GRA0007/crab.fit/issues/342)
 - Event creation rejects invalid dates, weekdays, times, mixed formats, and unsupported time zones. [#352](https://github.com/GRA0007/crab.fit/issues/352)
@@ -34,7 +36,7 @@ On November 23, 2026, the upstream repository had 56 open issues. This records t
 
 ## Open work
 
-- Respondent groups, tentative participation, time-zone overlap display, date-only polling, and configurable slot lengths. [#358](https://github.com/GRA0007/crab.fit/issues/358), [#307](https://github.com/GRA0007/crab.fit/issues/307), [#294](https://github.com/GRA0007/crab.fit/issues/294), [#291](https://github.com/GRA0007/crab.fit/issues/291), [#290](https://github.com/GRA0007/crab.fit/issues/290)
+- Respondent groups, tentative participation, and time-zone overlap display. [#358](https://github.com/GRA0007/crab.fit/issues/358), [#307](https://github.com/GRA0007/crab.fit/issues/307), [#294](https://github.com/GRA0007/crab.fit/issues/294)
 - Vote notifications, cross-poll availability sync, and participant email lists. These need shared identities or a delivery service. [#331](https://github.com/GRA0007/crab.fit/issues/331), [#323](https://github.com/GRA0007/crab.fit/issues/323), [#308](https://github.com/GRA0007/crab.fit/issues/308), [#135](https://github.com/GRA0007/crab.fit/issues/135)
 - Calendar-file import and import from iCalendar or CalDAV URLs. [#245](https://github.com/GRA0007/crab.fit/issues/245)
 - The external connection failure needs a reproducible case or diagnostics from that deployment. [#354](https://github.com/GRA0007/crab.fit/issues/354)

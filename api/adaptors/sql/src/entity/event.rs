@@ -12,6 +12,7 @@ pub struct Model {
     pub visited_at: DateTime,
     pub times: Json,
     pub timezone: String,
+    pub slot_size: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

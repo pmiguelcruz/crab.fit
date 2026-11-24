@@ -1,5 +1,5 @@
 use axum::Json;
-use common::{Event, Person, Stats};
+use common::{Event, Person, SlotSize, Stats};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -10,6 +10,8 @@ pub type ApiResult<T, A> = Result<Json<T>, ApiError<A>>;
 #[derive(Deserialize, ToSchema)]
 pub struct EventInput {
     pub name: Option<String>,
+    #[schema(value_type = Option<String>)]
+    pub slot_size: Option<SlotSize>,
     pub times: Vec<String>,
     pub timezone: String,
 }
@@ -21,6 +23,9 @@ pub struct EventResponse {
     pub times: Vec<String>,
     pub timezone: String,
     pub created_at: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schema(value_type = Option<String>)]
+    pub slot_size: Option<SlotSize>,
 }
 
 impl From<Event> for EventResponse {
@@ -30,6 +35,7 @@ impl From<Event> for EventResponse {
             name: value.name,
             times: value.times,
             timezone: value.timezone,
+            slot_size: value.slot_size,
             created_at: value.created_at.timestamp(),
         }
     }

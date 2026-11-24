@@ -34,6 +34,13 @@
       "add": "Add a time window",
       "remove": "Remove window"
     },
+    "slot_size": {
+      "label": "Vote on",
+      "quarter_hour": "15-minute slots",
+      "half_hour": "30-minute slots",
+      "hour": "60-minute slots",
+      "day": "Dates only"
+    },
     "times": {
       "label": "What times might work?",
       "sublabel": "Click and drag to select a time range"
@@ -45,6 +52,7 @@
 
     "button": "Create",
     "errors": {
+      "no_times": "None of those times occur on the dates you chose.",
       "no_dates": "There aren't any dates selected",
       "same_times": "The start and end times can't be the same",
       "no_time": "There isn't any time selected",

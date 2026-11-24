@@ -6,6 +6,7 @@ import { Temporal } from '@js-temporal/polyfill'
 
 import Button from '/src/components/Button/Button'
 import Content from '/src/components/Content/Content'
+import DayCalendar, { CalendarDayState } from '/src/components/DayCalendar/DayCalendar'
 import Legend from '/src/components/Legend/Legend'
 import SelectField from '/src/components/SelectField/SelectField'
 import { PersonResponse } from '/src/config/api'
@@ -21,14 +22,16 @@ import Skeleton from './components/Skeleton/Skeleton'
 interface AvailabilityViewerProps {
   times: string[]
   people: PersonResponse[]
+  datesOnly?: boolean
   table?: ReturnType<typeof calculateTable>
 }
 
-const AvailabilityViewer = ({ times, people, table }: AvailabilityViewerProps) => {
+const AvailabilityViewer = ({ times, people, datesOnly, table }: AvailabilityViewerProps) => {
   const { t, i18n } = useTranslation('event')
 
   const highlight = useStore(useSettingsStore, state => state.highlight)
   const [filteredPeople, setFilteredPeople] = useState(people.map(p => p.name))
+  const [selectedDay, setSelectedDay] = useState<{ day: string; label: string }>()
   const [tempFocus, setTempFocus] = useState<string>()
   const [focusCount, setFocusCount] = useState<number>()
 
@@ -127,6 +130,23 @@ const AvailabilityViewer = ({ times, people, table }: AvailabilityViewerProps) =
     filteredPeople,
   ])
 
+  const dayStates = new Map<string, CalendarDayState>()
+  if (datesOnly) {
+    for (const day of availabilities) {
+      const count = tempFocus ? Number(day.people.includes(tempFocus)) : day.people.length
+      dayStates.set(day.date, {
+        count,
+        color: focusCount === undefined || focusCount === count
+          ? palette[Math.max(count - min, 0)].string
+          : undefined,
+        highlight: !!highlight && count > 0 && count === max,
+        selected: selectedDay?.day === day.date,
+      })
+    }
+  }
+  const selectedNames = (availabilities.find(day => day.date === selectedDay?.day)?.people ?? [])
+    .filter(name => !tempFocus || tempFocus === name)
+
   return <>
     <Content>
       <Legend
@@ -137,7 +157,7 @@ const AvailabilityViewer = ({ times, people, table }: AvailabilityViewerProps) =
         onSegmentFocus={setFocusCount}
       />
 
-      <span className={styles.info}>{t('group.info1')}</span>
+      <span className={styles.info}>{t(datesOnly ? 'days.group_info' : 'group.info1')}</span>
 
       {people.length > 1 && <>
         <span className={styles.info}>{t('group.info2')}</span>
@@ -188,7 +208,19 @@ const AvailabilityViewer = ({ times, people, table }: AvailabilityViewerProps) =
       </>}
     </Content>
 
-    <div className={styles.wrapper}>
+    {datesOnly ? <>
+      <DayCalendar
+        days={times}
+        states={dayStates}
+        onSelect={(day, label) => setSelectedDay(previous => previous?.day === day ? undefined : { day, label })}
+      />
+      {selectedDay && <Content>
+        <div role="status">
+          <strong>{selectedDay.label}</strong>
+          <p>{selectedNames.length ? selectedNames.join(', ') : t('days.nobody')}</p>
+        </div>
+      </Content>}
+    </> : <div className={styles.wrapper}>
       <div tabIndex={0} role="region" aria-label={t('group.calendar')} onScroll={() => setTooltip(undefined)}>
         <div className={styles.heatmap}>
           {useMemo(() => <div className={styles.timeLabels}>
@@ -219,7 +251,7 @@ const AvailabilityViewer = ({ times, people, table }: AvailabilityViewerProps) =
           </div>}
         </div>}
       </div>
-    </div>
+    </div>}
   </>
 }
 

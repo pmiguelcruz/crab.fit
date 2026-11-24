@@ -2,6 +2,8 @@
 
 import { z } from 'zod'
 
+import { slotSizes } from '/src/utils/slotSize'
+
 if (process.env.NEXT_PUBLIC_API_URL === undefined) {
   throw new Error('Expected API url environment variable')
 }
@@ -12,6 +14,7 @@ export const EventInput = z.object({
   name: z.string().optional(),
   times: z.string().array(),
   timezone: z.string(),
+  slot_size: z.enum(slotSizes).optional(),
 })
 export type EventInput = z.infer<typeof EventInput>
 
@@ -20,6 +23,7 @@ export const EventResponse = z.object({
   name: z.string(),
   times: z.string().array(),
   timezone: z.string(),
+  slot_size: z.enum(slotSizes).optional(),
   created_at: z.number(),
 })
 export type EventResponse = z.infer<typeof EventResponse>

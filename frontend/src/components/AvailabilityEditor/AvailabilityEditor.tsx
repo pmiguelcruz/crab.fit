@@ -3,6 +3,7 @@ import { Temporal } from '@js-temporal/polyfill'
 
 import Button from '/src/components/Button/Button'
 import Content from '/src/components/Content/Content'
+import DayCalendar from '/src/components/DayCalendar/DayCalendar'
 import { usePalette } from '/src/hooks/usePalette'
 import { useTranslation } from '/src/i18n/client'
 import { calculateTable, makeClass, parseSpecificDate } from '/src/utils'
@@ -17,12 +18,14 @@ interface AvailabilityEditorProps {
   eventId?: string
   times: string[]
   timezone: string
+  datesOnly?: boolean
+  interval?: number
   value: string[]
   onChange: (value: string[]) => void
   table?: ReturnType<typeof calculateTable>
 }
 
-const AvailabilityEditor = ({ eventId, times, timezone, value = [], onChange, table }: AvailabilityEditorProps) => {
+const AvailabilityEditor = ({ eventId, times, timezone, datesOnly, interval = 15, value = [], onChange, table }: AvailabilityEditorProps) => {
   const { t } = useTranslation('event')
 
   // Ref and state required to rerender but also access static version in callbacks
@@ -37,10 +40,10 @@ const AvailabilityEditor = ({ eventId, times, timezone, value = [], onChange, ta
   const mode = useRef<'add' | 'remove'>()
 
   const dateBounds = useMemo(() => {
-    if (times[0]?.length !== 13) return
+    if (datesOnly || times[0]?.length !== 13) return
     const dates = times.map(parseSpecificDate).sort(Temporal.ZonedDateTime.compare)
-    return { start: dates[0], end: dates[dates.length - 1].add({ minutes: 15 }) }
-  }, [times])
+    return { start: dates[0], end: dates[dates.length - 1].add({ minutes: interval }) }
+  }, [datesOnly, interval, times])
 
   // Create the colour palette
   const palette = usePalette(2)
@@ -67,7 +70,7 @@ const AvailabilityEditor = ({ eventId, times, timezone, value = [], onChange, ta
 
   return <>
     <Content isCentered>
-      <div>{t('you.info')}</div>
+      <div>{t(datesOnly ? 'days.editor_info' : 'you.info')}</div>
       <div className={styles.selectionControls}>
         <Button isSmall onClick={selectAll} title="Ctrl + A (⌘ A)">{t('you.select_all')}</Button>
         <Button isSmall onClick={selectNone} title="Ctrl + Shift + A (⌘ ⇧ A)">{t('you.select_none')}</Button>
@@ -80,6 +83,7 @@ const AvailabilityEditor = ({ eventId, times, timezone, value = [], onChange, ta
           timezone={timezone}
           timeStart={dateBounds.start}
           timeEnd={dateBounds.end}
+          interval={interval}
           times={times}
           onImport={onChange}
         />
@@ -91,7 +95,11 @@ const AvailabilityEditor = ({ eventId, times, timezone, value = [], onChange, ta
       </div>
     </Content>}
 
-    <div className={viewerStyles.wrapper}>
+    {datesOnly ? <DayCalendar
+      days={times}
+      states={new Map(value.map(day => [day, { selected: true }]))}
+      onSelect={day => onChange(value.includes(day) ? value.filter(selected => selected !== day) : [...value, day])}
+    /> : <div className={viewerStyles.wrapper}>
       <div tabIndex={0} role="region" aria-label={t('group.calendar')}>
         <div className={viewerStyles.heatmap}>
           <div className={viewerStyles.timeLabels}>
@@ -132,6 +140,7 @@ const AvailabilityEditor = ({ eventId, times, timezone, value = [], onChange, ta
 
                   return <div
                     key={y}
+                    title={cell.label}
                     className={makeClass(viewerStyles.time, selecting.length === 0 && viewerStyles.editable)}
                     style={{
                       touchAction: 'none',
@@ -181,7 +190,7 @@ const AvailabilityEditor = ({ eventId, times, timezone, value = [], onChange, ta
           </Fragment>) ?? <Skeleton isSpecificDates={times[0]?.length === 13} />}
         </div>
       </div>
-    </div>
+    </div>}
   </>
 }
 

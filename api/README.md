@@ -68,3 +68,17 @@ in the browser.
 
 The API listens on `0.0.0.0:3000` by default. Set `LISTEN_ADDR` to override
 the IP address and port, for example `127.0.0.1:3000` for local development.
+
+### Poll slot sizes
+
+On event creation, set `slot_size` to `quarter_hour`, `half_hour`, `hour`,
+or `day`. For a timed poll, put every selectable start time in `times`, in
+UTC as `HHmm-DDMMYYYY` for specific dates or `HHmm-d` for recurring weekdays
+with Sunday as `0`. A dates-only poll uses `YYYY-MM-DD` civil dates or ISO
+weekday numbers `1`–`7` without shifting by time zone. Participant
+availability contains the exact selected strings.
+
+An omitted `slot_size` keeps the older format. The API expands each stored
+hour into four selectable quarter-hour starts. SQL migration
+`m03_slot_size` adds a nullable column and keeps existing schedules and
+responses.

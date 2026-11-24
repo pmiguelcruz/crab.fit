@@ -3,7 +3,8 @@ import { Temporal } from '@js-temporal/polyfill'
 import Button from '/src/components/Button/Button'
 import { EventResponse, Submission } from '/src/config/api'
 import { useTranslation } from '/src/i18n/client'
-import { convertTimesToDates } from '/src/utils'
+import { convertTimesToDates, getWeekdayNames } from '/src/utils'
+import { slotMinutes } from '/src/utils/slotSize'
 
 import styles from './page.module.scss'
 
@@ -24,12 +25,26 @@ const SubmissionReceipt = ({ event, submission, timezone }: Props) => {
       timeStyle: 'long',
       timeZone: timezone,
     })
-    const dates = convertTimesToDates(submission.availability, timezone)
-      .sort(Temporal.ZonedDateTime.compare)
+    const weekdays = getWeekdayNames(i18n.language)
+    const size = event.slot_size
     const weeksOrDates: Intl.DateTimeFormatOptions = weekly ? { weekday: 'long' } : { dateStyle: 'long' }
-    const slots = dates.map(date => `${date.toLocaleString(i18n.language, weeksOrDates)} · ${
-      date.toLocaleString(i18n.language, { timeStyle: 'short' })
-    }–${date.add({ minutes: 15 }).toLocaleString(i18n.language, { timeStyle: 'short' })}`)
+    const slots = size === 'day'
+      ? [...submission.availability].sort().map(day => day.length === 1
+        ? weekdays[Number(day) - 1]
+        : Temporal.PlainDate.from(day).toLocaleString(i18n.language, { dateStyle: 'full' }))
+      : convertTimesToDates(submission.availability, timezone)
+        .sort(Temporal.ZonedDateTime.compare)
+        .map(date => {
+          const end = date.add({ minutes: slotMinutes(size) })
+          const zone = Temporal.TimeZone.from(timezone)
+          const ambiguous = zone.getPossibleInstantsFor(date.toPlainDateTime()).length > 1
+            || zone.getPossibleInstantsFor(end.toPlainDateTime()).length > 1
+            || date.offset !== end.offset
+          const format = (time: Temporal.ZonedDateTime) => (
+            time.toLocaleString(i18n.language, { timeStyle: 'short' }) + (ambiguous ? ` (UTC${time.offset})` : '')
+          )
+          return `${date.toLocaleString(i18n.language, weeksOrDates)} · ${format(date)}–${format(end)}`
+        })
     const receipt = [
       t('submission.receipt_title'),
       t('submission.receipt_event', { name: event.name }),

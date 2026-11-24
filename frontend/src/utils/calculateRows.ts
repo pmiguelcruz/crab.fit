@@ -1,26 +1,24 @@
 import { splitArrayBy } from '@giraugh/tools'
 import { Temporal } from '@js-temporal/polyfill'
 
-/**
- * Calculates the rows required for an availability grid
- * @returns An array of PlainTime or null, where null indicates a spacer row in gaps
- */
-export const calculateRows = (dates: Temporal.ZonedDateTime[]): (Temporal.PlainTime | null)[] => {
-  // Dedupe dates by time and sort
-  const sortedDates = [...new Map(dates.map(d => {
-    const plain = d.toPlainTime()
-    return [plain.toString({ smallestUnit: 'minute' }), plain]
-  })).values()]
-    .sort(Temporal.PlainTime.compare)
+export interface RowTime {
+  time: Temporal.PlainTime
+  occurrence: number
+  end?: boolean
+}
 
-  // Partition by distance
-  const partitionedDates = splitArrayBy(sortedDates, (a, b) => !a.add({ minutes: 15 }).equals(b))
+/** Calculate a row for each displayed time, retaining repeated local times at a clock change. */
+export const calculateRows = (times: Temporal.PlainTime[], repeats: ReadonlyMap<string, number>, interval: number): (RowTime | null)[] => {
+  const sorted = [...new Map(times.map(time => [time.toString(), time])).values()].sort(Temporal.PlainTime.compare)
+  if (!sorted.length) return []
+  const groups = splitArrayBy(sorted, (a, b) => a.until(b).total({ unit: 'minutes' }) > interval)
 
-  // Add end cap time and join
-  return partitionedDates.reduce((rows, partition, i) => [
-    ...rows,
-    ...partition,
-    partition[partition.length - 1].add({ minutes: 15 }),
-    ...i < partitionedDates.length - 1 ? [null, null] : [], // Add spacer in between partitions
-  ], [] as (Temporal.PlainTime | null)[])
+  return groups.flatMap((group, index) => [
+    ...group.flatMap(time => Array.from({ length: repeats.get(time.toString()) ?? 1 }, (_, occurrence) => ({
+      time,
+      occurrence,
+    }))),
+    { time: group[group.length - 1].add({ minutes: interval }), occurrence: 0, end: true },
+    ...(index < groups.length - 1 ? [null, null] : []),
+  ])
 }

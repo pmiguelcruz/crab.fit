@@ -224,6 +224,7 @@ mod tests {
                         visited_at,
                         times: vec!["0900-1".into()],
                         timezone: "UTC".into(),
+                        slot_size: None,
                     })
                     .await
                     .unwrap();

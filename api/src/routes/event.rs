@@ -3,7 +3,7 @@ use axum::{
     http::StatusCode,
     Json,
 };
-use common::{Adaptor, Event};
+use common::{Adaptor, Event, SlotSize};
 use rand::{seq::SliceRandom, thread_rng, Rng};
 use regex::Regex;
 
@@ -61,7 +61,9 @@ pub async fn create_event<A: Adaptor>(
     extract::State(state): State<A>,
     Json(input): Json<EventInput>,
 ) -> Result<(StatusCode, Json<EventResponse>), ApiError<A>> {
-    if !valid_times(&input.times) || input.timezone.parse::<chrono_tz::Tz>().is_err() {
+    if !valid_choices(&input.times, input.slot_size)
+        || input.timezone.parse::<chrono_tz::Tz>().is_err()
+    {
         return Err(ApiError::InvalidInput);
     }
     let adaptor = &state.lock().await.adaptor;
@@ -110,6 +112,7 @@ pub async fn create_event<A: Adaptor>(
             visited_at: now,
             times,
             timezone: input.timezone,
+            slot_size: input.slot_size,
         })
         .await
         .map_err(ApiError::AdaptorError)?;
@@ -157,7 +160,30 @@ fn encode_name(name: String) -> String {
     re.replace_all(&pc, "-").to_string()
 }
 
-pub(super) fn valid_times(times: &[String]) -> bool {
+pub(super) fn valid_choices(choices: &[String], slot_size: Option<SlotSize>) -> bool {
+    if slot_size != Some(SlotSize::Day) {
+        return valid_times(choices);
+    }
+    let Some(first) = choices.first() else {
+        return false;
+    };
+    choices.iter().all(|choice| {
+        let bytes = choice.as_bytes();
+        if bytes.len() != first.len() {
+            return false;
+        }
+        match bytes {
+            [b'1'..=b'7'] => true,
+            [year @ .., b'-', m1, m2, b'-', d1, d2] if year.len() == 4 => {
+                year.iter().chain([m1, m2, d1, d2]).all(u8::is_ascii_digit)
+                    && chrono::NaiveDate::parse_from_str(choice, "%Y-%m-%d").is_ok()
+            }
+            _ => false,
+        }
+    })
+}
+
+fn valid_times(times: &[String]) -> bool {
     let Some(first) = times.first() else {
         return false;
     };
@@ -186,7 +212,27 @@ pub(super) fn valid_times(times: &[String]) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::valid_times;
+    use super::{valid_choices, valid_times, SlotSize};
+
+    #[test]
+    fn day_polls_accept_either_calendar_dates_or_iso_weekdays() {
+        let accepts = |choices: &[&str]| {
+            valid_choices(
+                &choices
+                    .iter()
+                    .map(|choice| choice.to_string())
+                    .collect::<Vec<_>>(),
+                Some(SlotSize::Day),
+            )
+        };
+        assert!(accepts(&["2028-02-29", "2028-03-01"]));
+        assert!(accepts(&["1", "7"]));
+        assert!(!accepts(&["0"]));
+        assert!(!accepts(&["2027-02-29"]));
+        assert!(!accepts(&["2028-2-029"]));
+        assert!(!accepts(&["2028-02-29", "7"]));
+        assert!(!accepts(&["0930-1"]));
+    }
 
     #[test]
     fn validates_specific_dates_and_recurring_weekdays() {

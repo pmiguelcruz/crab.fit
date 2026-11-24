@@ -9,7 +9,7 @@ use common::Adaptor;
 use crate::{
     errors::ApiError,
     payloads::{ApiResult, EventEdit, EventResponse, PinInput, TokenResponse},
-    routes::{event::valid_times, person::remove_person},
+    routes::{event::valid_choices, person::remove_person},
     sessions::{Session, ADMIN_TTL},
     State,
 };
@@ -83,12 +83,16 @@ pub async fn update_event<A: Adaptor>(
     if name.is_empty() || name.chars().count() > 255 || name.chars().any(char::is_control) {
         return Err(ApiError::InvalidInput);
     }
-    if input
-        .times
-        .as_deref()
-        .is_some_and(|times| !valid_times(times))
-    {
-        return Err(ApiError::InvalidInput);
+    if let Some(choices) = &input.times {
+        let event = state
+            .adaptor
+            .get_event(id.clone())
+            .await
+            .map_err(ApiError::AdaptorError)?
+            .ok_or(ApiError::NotFound)?;
+        if !valid_choices(choices, event.slot_size) {
+            return Err(ApiError::InvalidInput);
+        }
     }
 
     let event = state

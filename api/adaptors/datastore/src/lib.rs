@@ -5,7 +5,8 @@ use chrono::{DateTime, NaiveDateTime, Utc};
 use common::{Adaptor, Event, Person, Stats};
 use google_cloud::{
     authorize::ApplicationCredentials,
-    datastore::{Client, Filter, FromValue, IntoValue, Key, KeyID, Query},
+    datastore::{Client, Filter, FromValue, IntoValue, Key, KeyID, Query, Value},
+    error::ConvertError,
 };
 use tokio::sync::Mutex;
 
@@ -305,13 +306,45 @@ struct DatastoreStats {
     value: i64,
 }
 
-#[derive(FromValue, IntoValue, Clone)]
+#[derive(IntoValue, Clone)]
 struct DatastoreEvent {
     name: String,
     created: i64,
     visited: i64,
     times: Vec<String>,
     timezone: String,
+    #[datastore(rename = "slot_size")]
+    slot_size: Option<String>,
+}
+
+impl FromValue for DatastoreEvent {
+    fn from_value(value: Value) -> Result<Self, ConvertError> {
+        let Value::EntityValue(mut properties) = value else {
+            return Err(ConvertError::UnexpectedPropertyType {
+                expected: "entity".into(),
+                got: value.type_name().into(),
+            });
+        };
+        // The SDK's generated decoder requires every property, even Option fields.
+        let slot_size = match properties.remove("slot_size") {
+            None | Some(Value::OptionValue(None)) => None,
+            Some(Value::OptionValue(Some(value))) => Some(String::from_value(*value)?),
+            Some(value) => Some(String::from_value(value)?),
+        };
+        let mut required = |name: &str| {
+            properties
+                .remove(name)
+                .ok_or_else(|| ConvertError::MissingProperty(name.into()))
+        };
+        Ok(Self {
+            name: String::from_value(required("name")?)?,
+            created: i64::from_value(required("created")?)?,
+            visited: i64::from_value(required("visited")?)?,
+            times: Vec::from_value(required("times")?)?,
+            timezone: String::from_value(required("timezone")?)?,
+            slot_size,
+        })
+    }
 }
 
 #[derive(FromValue, IntoValue)]
@@ -355,6 +388,7 @@ impl From<Event> for DatastoreEvent {
             visited: value.visited_at.timestamp(),
             times: value.times,
             timezone: value.timezone,
+            slot_size: value.slot_size.map(|size| size.as_str().to_owned()),
         }
     }
 }
@@ -368,6 +402,7 @@ impl DatastoreEvent {
             visited_at: unix_to_date(self.visited),
             times: self.times.clone(),
             timezone: self.timezone.clone(),
+            slot_size: self.slot_size.as_deref().and_then(|size| size.parse().ok()),
         }
     }
 }
@@ -400,5 +435,44 @@ impl From<google_cloud::error::Error> for DatastoreAdaptorError {
 impl From<google_cloud::error::ConvertError> for DatastoreAdaptorError {
     fn from(value: google_cloud::error::ConvertError) -> Self {
         Self::DatastoreError(google_cloud::error::Error::Convert(value))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use common::SlotSize;
+
+    #[test]
+    fn reads_events_written_before_slot_size_existed() {
+        let record = DatastoreEvent {
+            name: "Legacy poll".into(),
+            created: 1,
+            visited: 2,
+            times: vec!["0915-4".into()],
+            timezone: "UTC".into(),
+            slot_size: Some("half_hour".into()),
+        };
+        let Value::EntityValue(mut properties) = record.into_value() else {
+            panic!("expected event properties");
+        };
+
+        let event = DatastoreEvent::from_value(Value::EntityValue(properties.clone()))
+            .unwrap()
+            .to_event("poll".into());
+        assert_eq!(event.slot_size, Some(SlotSize::HalfHour));
+
+        properties.insert("slot_size".into(), "hour".into_value());
+        let event = DatastoreEvent::from_value(Value::EntityValue(properties.clone()))
+            .unwrap()
+            .to_event("poll".into());
+        assert_eq!(event.slot_size, Some(SlotSize::Hour));
+
+        properties.remove("slot_size");
+        let event = DatastoreEvent::from_value(Value::EntityValue(properties))
+            .unwrap()
+            .to_event("poll".into());
+        assert_eq!(event.slot_size, None);
+        assert_eq!(event.times, ["0915-4"]);
     }
 }

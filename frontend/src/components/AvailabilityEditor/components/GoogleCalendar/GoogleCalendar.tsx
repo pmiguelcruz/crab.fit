@@ -40,11 +40,12 @@ interface GoogleCalendarProps {
   timezone: string
   timeStart: Temporal.ZonedDateTime
   timeEnd: Temporal.ZonedDateTime
+  interval: number
   times: string[]
   onImport: (availability: string[]) => void
 }
 
-const GoogleCalendar = ({ timezone, timeStart, timeEnd, times, onImport }: GoogleCalendarProps) => {
+const GoogleCalendar = ({ timezone, timeStart, timeEnd, times, interval, onImport }: GoogleCalendarProps) => {
   if (!clientId || !apiKey) return null
 
   const { t } = useTranslation('event')
@@ -106,9 +107,9 @@ const GoogleCalendar = ({ timezone, timeStart, timeEnd, times, onImport }: Googl
           end: Date.parse(period.end),
         }))
       })
-      const quarterHour = 15 * 60 * 1000
+      const durationMs = interval * 60 * 1000
       onImport(times.filter((_, i) => !busy.some(period =>
-        epochTimes[i] < period.end && epochTimes[i] + quarterHour > period.start,
+        epochTimes[i] < period.end && epochTimes[i] + durationMs > period.start,
       )))
     } catch {
       setError(t('you.integration.failed'))

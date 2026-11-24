@@ -23,10 +23,11 @@ interface Props {
 
 const EventEditor = ({ event, token, onSaved, onCancel, onExpired }: Props) => {
   const { t, i18n } = useTranslation('admin')
-  const weekly = event.times[0]?.length === 6
+  const datesOnly = event.slot_size === 'day'
+  const weekly = event.times[0]?.length === (datesOnly ? 1 : 6)
   const [originals] = useState(() => {
     try {
-      return readSchedule(event.times, event.timezone, weekly)
+      return readSchedule(event.times, event.timezone, weekly, datesOnly)
     } catch {
       return []
     }
@@ -47,7 +48,7 @@ const EventEditor = ({ event, token, onSaved, onCancel, onExpired }: Props) => {
 
     let times
     try {
-      if (originals.length) times = writeSchedule(days, originals, event.timezone, weekly)
+      if (originals.length) times = writeSchedule(days, originals, event.timezone, weekly, datesOnly, event.slot_size !== undefined)
     } catch {
       return setError(t('dates_error'))
     }
@@ -67,7 +68,7 @@ const EventEditor = ({ event, token, onSaved, onCancel, onExpired }: Props) => {
     <fieldset className={styles.editor} disabled={busy}>
       <legend>{t('edit_event')}</legend>
       <TextField label={t('title')} name="title" defaultValue={event.name} required maxLength={255} />
-      <p>{t('dates_timezone', { timezone: event.timezone })}</p>
+      {!datesOnly && <p>{t('dates_timezone', { timezone: event.timezone })}</p>}
       {originals.length === 0 && <p>{t('schedule_unavailable')}</p>}
       {days.map((day, index) => {
         const field = {
