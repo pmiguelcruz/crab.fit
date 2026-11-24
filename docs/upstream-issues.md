@@ -32,7 +32,7 @@ On November 23, 2026, the upstream repository had 56 open issues. This records t
 
 ## Code changed, with verification or coverage pending
 
-- The fork distinguishes API failure from a missing event and shares the correct host. The original hosted reports remain unverified. [#356](https://github.com/GRA0007/crab.fit/issues/356), [#328](https://github.com/GRA0007/crab.fit/issues/328)
+- The fork distinguishes API outages from missing events and shares the current host. A Chromium fixture verified that retrying a recovered poll reloads it and a missing poll still shows its own error page. The original hosted failures remain unverified. [#356](https://github.com/GRA0007/crab.fit/issues/356), [#328](https://github.com/GRA0007/crab.fit/issues/328)
 - A MySQL migration converts the legacy TIMESTAMP columns to DATETIME. Live MySQL migration remains unverified. [#355](https://github.com/GRA0007/crab.fit/issues/355)
 - Calendar import uses the true range and checks errors and partial-slot conflicts. A live authenticated Google Calendar test remains open. [#343](https://github.com/GRA0007/crab.fit/issues/343)
 - The Docker builder and runtime use the same Debian release and the runtime installs libssl3. A container build and start remain unverified. [#315](https://github.com/GRA0007/crab.fit/issues/315), [#305](https://github.com/GRA0007/crab.fit/issues/305)
