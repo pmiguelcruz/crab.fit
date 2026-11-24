@@ -4,7 +4,7 @@ import { SubmitHandler, useForm } from 'react-hook-form'
 import Button from '/src/components/Button/Button'
 import Error from '/src/components/Error/Error'
 import TextField from '/src/components/TextField/TextField'
-import { getPerson, PersonResponse } from '/src/config/api'
+import { getPerson, PersonLogin, PersonResponse } from '/src/config/api'
 import { useTranslation } from '/src/i18n/client'
 
 import styles from './Login.module.scss'
@@ -17,10 +17,11 @@ const defaultValues = {
 interface LoginProps {
   eventId?: string
   user: PersonResponse | undefined
-  onChange: (user: PersonResponse | undefined, password?: string) => void
+  disabled?: boolean
+  onChange: (user: PersonLogin | undefined) => void
 }
 
-const Login = ({ eventId, user, onChange }: LoginProps) => {
+const Login = ({ eventId, user, disabled, onChange }: LoginProps) => {
   const { t } = useTranslation('event')
 
   const {
@@ -41,7 +42,7 @@ const Login = ({ eventId, user, onChange }: LoginProps) => {
   }, [])
 
   const onSubmit: SubmitHandler<typeof defaultValues> = async ({ username, password }) => {
-    if (username.length === 0) {
+    if (username.trim().length === 0) {
       focusName()
       return setError(t('form.errors.name_required'))
     }
@@ -53,7 +54,7 @@ const Login = ({ eventId, user, onChange }: LoginProps) => {
       if (!eventId) throw 'Event ID not set'
 
       const resUser = await getPerson(eventId, username, password || undefined)
-      onChange(resUser, password || undefined)
+      onChange(resUser)
       reset()
     } catch (e) {
       if (e && typeof e === 'object' && 'status' in e && e.status === 401) {
@@ -69,7 +70,7 @@ const Login = ({ eventId, user, onChange }: LoginProps) => {
 
   return user ? <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '20px 0', flexWrap: 'wrap', gap: '10px' }}>
     <h2 style={{ margin: 0 }}>{t('form.signed_in', { name: user.name })}</h2>
-    <Button isSmall onClick={() => onChange(undefined)}>{t('form.logout_button')}</Button>
+    <Button isSmall disabled={disabled} onClick={() => onChange(undefined)}>{t('form.logout_button')}</Button>
   </div> : <>
     <h2>{t('form.signed_out')}</h2>
     <form className={styles.form} onSubmit={handleSubmit(onSubmit)}>

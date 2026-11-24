@@ -34,3 +34,23 @@ In release mode, a `FRONTEND_URL` environment variable is required to correctly 
 ### Cleanup task
 
 By default, anyone can run the cleanup task at `/tasks/cleanup`. This is usually not an issue, as it's based on when the events were last visited, and not when it's run, but if you'd prefer to restrict runs of the cleanup task (as it can be intensive), set a `CRON_KEY` environment variable in `.env`. This will require sending an `X-Cron-Key` header to the route with a value that matches `CRON_KEY`, or the route will return a 401 Unauthorized error.
+
+### Event management and participant sign-in
+
+Set `ADMIN_PIN` to four digits in the API environment (or in the ignored
+`api/.env` during development). Open **About → Admin interface** on the
+frontend to sign in. Admin sessions expire after eight hours or an API restart.
+The API limits failed admin PIN attempts to five in a 15-minute window.
+
+Management lists events in the configured store, including events created
+before this update. Renaming or moving dates preserves the event URL and
+responses on overlapping slots. The availability grid displays responses only
+on the current schedule. Deleting an event also deletes its responses.
+
+Participant login at `GET /event/{event_id}/people/{person_name}` returns a
+one-hour token in the `token` field. Use it as the bearer credential for one
+successful availability PATCH. A successful submission returns the saved
+availability and its `submitted_at` UTC timestamp for the browser receipt.
+Event passwords remain optional, with existing passwords required at sign-in.
+Sessions are held by the API process. If running multiple API instances,
+route a session's requests to the same instance.

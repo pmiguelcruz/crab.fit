@@ -78,3 +78,19 @@
   height: 1em;
   display: inline-block;
 }
+
+.submission {
+  margin: 20px 0;
+}
+
+.receipt {
+  background: var(--surface);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px;
+  margin: 12px 0;
+}

@@ -1,0 +1,19 @@
+.summary {
+  cursor: pointer;
+
+  h2 {
+    display: inline;
+    margin: 0;
+  }
+}
+
+.form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+
+  input {
+    width: 8rem;
+  }
+}

@@ -53,6 +53,19 @@
     "clipboard_message": "People available on {{date}}"
   },
 
+  "submission": {
+    "submit": "Submit availability",
+    "saved": "Availability submitted.",
+    "download": "Download receipt",
+    "failed": "Could not submit availability. Try again.",
+    "expired": "Your sign-in expired. Sign in again to submit.",
+    "schedule_changed": "The event schedule changed. Reload the page before submitting.",
+    "receipt_title": "Crab Fit availability receipt",
+    "receipt_event": "Event: {{name}}",
+    "receipt_participant": "Participant: {{name}}",
+    "receipt_time": "Submitted: {{time}} ({{timezone}})",
+    "receipt_empty": "No times selected."
+  },
   "you": {
     "info": "Click and drag the calendar below to set your availabilities",
     "select_all": "Select all",

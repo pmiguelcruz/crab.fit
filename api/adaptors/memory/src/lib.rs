@@ -102,6 +102,34 @@ impl Adaptor for MemoryAdaptor {
         Ok(event)
     }
 
+    async fn list_events(&self) -> Result<Vec<Event>, Self::Error> {
+        Ok(self.state.lock().await.events.values().cloned().collect())
+    }
+
+    async fn update_event(
+        &self,
+        id: String,
+        name: String,
+        times: Option<Vec<String>>,
+    ) -> Result<Option<Event>, Self::Error> {
+        let mut state = self.state.lock().await;
+        let Some(event) = state.events.get_mut(&id) else {
+            return Ok(None);
+        };
+        event.name = name;
+        if let Some(times) = times {
+            event.times = times;
+        }
+        Ok(Some(event.clone()))
+    }
+
+    async fn delete_event(&self, id: String) -> Result<bool, Self::Error> {
+        let mut state = self.state.lock().await;
+        let deleted = state.events.remove(&id).is_some();
+        state.people.retain(|(event_id, _), _| event_id != &id);
+        Ok(deleted)
+    }
+
     async fn delete_events(&self, cutoff: DateTime<Utc>) -> Result<Stats, Self::Error> {
         let mut state = self.state.lock().await;
 
@@ -126,7 +154,7 @@ impl Adaptor for MemoryAdaptor {
             .people
             .clone()
             .into_iter()
-            .filter(|((event_id, _), _)| deleted_event_ids.contains(event_id))
+            .filter(|((event_id, _), _)| !deleted_event_ids.contains(event_id))
             .collect();
         person_count -= state.people.len() as i64;
 

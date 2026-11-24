@@ -159,6 +159,64 @@ impl Adaptor for DatastoreAdaptor {
         Ok(event)
     }
 
+    async fn list_events(&self) -> Result<Vec<Event>, Self::Error> {
+        let mut client = self.client.lock().await;
+        let entities = client.query(Query::new(EVENT_KIND)).await?;
+        let mut events = Vec::new();
+        for entity in entities {
+            if let KeyID::StringID(id) = entity.key().get_id() {
+                let event = DatastoreEvent::from_value(entity.properties().clone())?;
+                events.push(event.to_event(id.clone()));
+            }
+        }
+        Ok(events)
+    }
+
+    async fn update_event(
+        &self,
+        id: String,
+        name: String,
+        times: Option<Vec<String>>,
+    ) -> Result<Option<Event>, Self::Error> {
+        let mut client = self.client.lock().await;
+        let key = Key::new(EVENT_KIND).id(id.clone());
+        let Some(mut event) = client.get::<DatastoreEvent, _>(key.clone()).await? else {
+            return Ok(None);
+        };
+        event.name = name;
+        if let Some(times) = times {
+            event.times = times;
+        }
+        let updated = event.to_event(id);
+        client.put((key, event)).await?;
+        Ok(Some(updated))
+    }
+
+    async fn delete_event(&self, id: String) -> Result<bool, Self::Error> {
+        let mut client = self.client.lock().await;
+        let key = Key::new(EVENT_KIND).id(id.clone());
+        if client
+            .get::<DatastoreEvent, _>(key.clone())
+            .await?
+            .is_none()
+        {
+            return Ok(false);
+        }
+
+        let people = client
+            .query(Query::new(PERSON_KIND).filter(Filter::Equal("eventId".into(), id.into_value())))
+            .await?;
+        // Keep the event addressable until all participant deletions succeed, so
+        // a failed batch can be retried. Datastore limits each commit to 500 keys.
+        for batch in people.chunks(500) {
+            client
+                .delete_all(batch.iter().map(|entity| entity.key()))
+                .await?;
+        }
+        client.delete(&key).await?;
+        Ok(true)
+    }
+
     async fn delete_events(&self, cutoff: DateTime<Utc>) -> Result<Stats, Self::Error> {
         let mut client = self.client.lock().await;
 

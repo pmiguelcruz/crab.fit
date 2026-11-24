@@ -126,6 +126,44 @@ impl Adaptor for SqlAdaptor {
         .into())
     }
 
+    async fn list_events(&self) -> Result<Vec<Event>, Self::Error> {
+        Ok(event::Entity::find()
+            .all(&self.db)
+            .await?
+            .into_iter()
+            .map(Event::from)
+            .collect())
+    }
+
+    async fn update_event(
+        &self,
+        id: String,
+        name: String,
+        times: Option<Vec<String>>,
+    ) -> Result<Option<Event>, Self::Error> {
+        let Some(event) = event::Entity::find_by_id(id).one(&self.db).await? else {
+            return Ok(None);
+        };
+        let mut event: event::ActiveModel = event.into();
+        event.name = Set(name);
+        if let Some(times) = times {
+            event.times = Set(json!(times));
+        }
+        Ok(Some(event.update(&self.db).await?.into()))
+    }
+
+    async fn delete_event(&self, id: String) -> Result<bool, Self::Error> {
+        let txn = self.db.begin().await?;
+        // Older SQLite databases may have been created without the foreign key.
+        person::Entity::delete_many()
+            .filter(person::Column::EventId.eq(&id))
+            .exec(&txn)
+            .await?;
+        let result = event::Entity::delete_by_id(id).exec(&txn).await?;
+        txn.commit().await?;
+        Ok(result.rows_affected > 0)
+    }
+
     async fn delete_events(&self, cutoff: DateTime<Utc>) -> Result<Stats, Self::Error> {
         let (event_count, person_count) = self
             .db

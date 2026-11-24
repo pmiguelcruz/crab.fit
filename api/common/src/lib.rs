@@ -24,6 +24,15 @@ pub trait Adaptor: Send + Sync {
     async fn get_event(&self, id: String) -> Result<Option<Event>, Self::Error>;
     async fn create_event(&self, event: Event) -> Result<Event, Self::Error>;
 
+    async fn list_events(&self) -> Result<Vec<Event>, Self::Error>;
+    async fn update_event(
+        &self,
+        id: String,
+        name: String,
+        times: Option<Vec<String>>,
+    ) -> Result<Option<Event>, Self::Error>;
+    async fn delete_event(&self, id: String) -> Result<bool, Self::Error>;
+
     /// Delete events older than a cutoff date, as well as any associated people
     /// Returns the amount of events and people deleted
     async fn delete_events(&self, cutoff: DateTime<Utc>) -> Result<Stats, Self::Error>;

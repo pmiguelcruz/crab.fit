@@ -27,6 +27,8 @@ use utoipa::{
         payloads::PersonResponse,
         payloads::EventInput,
         payloads::PersonInput,
+        payloads::PersonLogin,
+        payloads::Submission,
     )),
     tags(
         (name = "info"),
@@ -51,6 +53,10 @@ impl Modify for SecurityAddon {
                     .bearer_format("base64")
                     .build(),
             ),
+        );
+        openapi.components.as_mut().unwrap().add_security_scheme(
+            "participant-session",
+            SecurityScheme::Http(HttpBuilder::new().scheme(HttpAuthScheme::Bearer).build()),
         );
         openapi.components.as_mut().unwrap().add_security_scheme(
             "cron-key",

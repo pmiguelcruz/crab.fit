@@ -73,3 +73,33 @@ impl From<Person> for PersonResponse {
 pub struct PersonInput {
     pub availability: Vec<String>,
 }
+
+#[derive(Deserialize)]
+pub struct EventEdit {
+    pub name: String,
+    pub times: Option<Vec<String>>,
+}
+
+#[derive(Deserialize)]
+pub struct PinInput {
+    pub pin: String,
+}
+
+#[derive(Serialize)]
+pub struct TokenResponse {
+    pub token: String,
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct PersonLogin {
+    #[serde(flatten)]
+    pub person: PersonResponse,
+    pub token: String,
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct Submission {
+    #[serde(flatten)]
+    pub person: PersonResponse,
+    pub submitted_at: i64,
+}

@@ -5,11 +5,13 @@ import { Trans } from 'react-i18next/TransWithoutContext'
 
 import AvailabilityEditor from '/src/components/AvailabilityEditor/AvailabilityEditor'
 import AvailabilityViewer from '/src/components/AvailabilityViewer/AvailabilityViewer'
+import Button from '/src/components/Button/Button'
 import Content from '/src/components/Content/Content'
+import Error from '/src/components/Error/Error'
 import Login from '/src/components/Login/Login'
 import Section from '/src/components/Section/Section'
 import SelectField from '/src/components/SelectField/SelectField'
-import { EventResponse, getPeople, PersonResponse, updatePerson } from '/src/config/api'
+import { EventResponse, getPeople, PersonLogin, PersonResponse, Submission, updatePerson } from '/src/config/api'
 import { useTranslation } from '/src/i18n/client'
 import timezones from '/src/res/timezones.json'
 import { useStore } from '/src/stores'
@@ -18,6 +20,7 @@ import useSettingsStore from '/src/stores/settingsStore'
 import { calculateTable, expandTimes, makeClass } from '/src/utils'
 
 import styles from './page.module.scss'
+import SubmissionReceipt from './SubmissionReceipt'
 
 interface EventAvailabilitiesProps {
   event?: EventResponse
@@ -31,8 +34,11 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
   const [people, setPeople] = useState<PersonResponse[]>([])
   const expandedTimes = useMemo(() => expandTimes(event?.times ?? []), [event?.times])
 
-  const [user, setUser] = useState<PersonResponse>()
-  const [password, setPassword] = useState<string>()
+  const [user, setUser] = useState<PersonLogin>()
+  const [draft, setDraft] = useState<string[]>([])
+  const [submitting, setSubmitting] = useState(false)
+  const [receipt, setReceipt] = useState<{ submission: Submission; timezone: string }>()
+  const [submitError, setSubmitError] = useState('')
 
   const [tab, setTab] = useState<'group' | 'you'>('group')
   const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone)
@@ -44,7 +50,7 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
   const [table, setTable] = useState<ReturnType<typeof calculateTable>>()
 
   useEffect(() => {
-    if (event && expandTimes.length > 0) {
+    if (event && expandedTimes.length > 0) {
       if (!tableWorker.current) {
         tableWorker.current = window.Worker ? new Worker(new URL('/src/workers/calculateTable', import.meta.url)) : undefined
       }
@@ -80,13 +86,49 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
     }
   }, [tab])
 
+  const submit = async () => {
+    if (!event || !user || submitting) return
+    setSubmitting(true)
+    setSubmitError('')
+    try {
+      const submission = await updatePerson(event.id, user.name, { availability: draft }, user.token)
+      setReceipt({ submission, timezone })
+      addRecent({
+        id: event.id,
+        name: event.name,
+        created_at: event.created_at,
+        user: submission.availability.length ? {
+          name: submission.name,
+          availability: submission.availability,
+        } : undefined,
+      })
+      setUser(undefined)
+      setDraft([])
+      setTab('group')
+    } catch (e) {
+      if (e instanceof Response && e.status === 401) {
+        setUser(undefined)
+        setTab('group')
+        setSubmitError(t('submission.expired'))
+      } else if (e instanceof Response && (e.status === 404 || e.status === 422)) {
+        setSubmitError(t('submission.schedule_changed'))
+      } else {
+        setSubmitError(t('submission.failed'))
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   return <>
     <Section id="login">
       <Content>
-        <Login eventId={event?.id} user={user} onChange={(u, p) => {
-          setUser(u)
-          setPassword(p)
-          setTab(u ? 'you' : 'group')
+        <Login eventId={event?.id} user={user} disabled={submitting} onChange={person => {
+          setUser(person)
+          setDraft(person?.availability ?? [])
+          setSubmitError('')
+          setTab(person ? 'you' : 'group')
+          if (person) setReceipt(undefined)
         }} />
 
         <SelectField
@@ -134,6 +176,8 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
     </Section>
 
     <Content>
+      <Error onClose={() => setSubmitError('')}>{submitError}</Error>
+      {event && receipt && <SubmissionReceipt event={event} {...receipt} />}
       <div className={styles.tabs}>
         <button
           className={makeClass(
@@ -166,32 +210,23 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
       times={expandedTimes}
       people={people}
       table={table}
-    /> : user && <AvailabilityEditor
-      eventId={event?.id}
-      times={expandedTimes}
-      timezone={timezone}
-      value={user.availability}
-      onChange={availability => {
-        if (!event) return
-        const oldAvailability = [...user.availability]
-        setUser({ ...user, availability })
-        addRecent({
-          id: event.id,
-          name: event.name,
-          created_at: event.created_at,
-          user: availability.length > 0 ? {
-            name: user.name,
-            availability,
-          } : undefined,
-        })
-        updatePerson(event.id, user.name, { availability }, password)
-          .catch(e => {
-            console.warn(e)
-            setUser({ ...user, availability: oldAvailability })
-          })
-      }}
-      table={table}
-    />}
+    /> : user && <>
+      <AvailabilityEditor
+        eventId={event?.id}
+        times={expandedTimes}
+        timezone={timezone}
+        value={draft}
+        onChange={value => { if (!submitting) setDraft(value) }}
+        table={table}
+      />
+      <Content isCentered>
+        <div className={styles.submission}>
+          <Button isLoading={submitting} disabled={submitting || !table} onClick={submit}>
+            {t('submission.submit')}
+          </Button>
+        </div>
+      </Content>
+    </>}
   </>
 }
 

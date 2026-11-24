@@ -38,7 +38,12 @@ const defaultValues: Fields = {
   timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 }
 
-const CreateForm = ({ noRedirect }: { noRedirect?: boolean }) => {
+interface CreateFormProps {
+  noRedirect?: boolean
+  onCreated?: (event: EventResponse) => void
+}
+
+const CreateForm = ({ noRedirect, onCreated }: CreateFormProps) => {
   const { t } = useTranslation('home')
   const { push } = useRouter()
 
@@ -99,7 +104,9 @@ const CreateForm = ({ noRedirect }: { noRedirect?: boolean }) => {
         throw new Error('Failed to create event')
       })
 
-      if (noRedirect) {
+      if (onCreated) {
+        onCreated(newEvent)
+      } else if (noRedirect) {
         // Show event link
         setCreatedEvent(newEvent)
         addRecent({

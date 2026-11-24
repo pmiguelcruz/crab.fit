@@ -27,9 +27,12 @@ mod docs;
 mod errors;
 mod payloads;
 mod routes;
+mod sessions;
 
 pub struct ApiState<A> {
     adaptor: A,
+    sessions: sessions::Sessions,
+    admin_pin: sessions::AdminPin,
 }
 
 pub type State<A> = extract::State<Arc<Mutex<ApiState<A>>>>;
@@ -43,13 +46,15 @@ async fn main() {
 
     let shared_state = Arc::new(Mutex::new(ApiState {
         adaptor: create_adaptor().await,
+        sessions: sessions::Sessions::default(),
+        admin_pin: sessions::AdminPin::new(env::var("ADMIN_PIN").ok()),
     }));
 
     // CORS configuration
     let cors = CorsLayer::new()
         .allow_credentials(true)
         .allow_headers([AUTHORIZATION, ACCEPT, CONTENT_TYPE])
-        .allow_methods([Method::GET, Method::POST, Method::PATCH])
+        .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
         .allow_origin(
             if cfg!(debug_assertions) {
                 "http://localhost:1234".to_owned()
@@ -82,6 +87,12 @@ async fn main() {
         .merge(SwaggerUi::new("/docs").url("/docs/openapi.json", ApiDoc::openapi()))
         .route("/", get(get_root))
         .route("/stats", get(stats::get_stats))
+        .route("/admin/session", post(admin::login).delete(admin::logout))
+        .route("/admin/events", get(admin::list_events))
+        .route(
+            "/admin/events/:id",
+            patch(admin::update_event).delete(admin::delete_event),
+        )
         .route("/event", post(event::create_event))
         .route("/event/:event_id", get(event::get_event))
         .route("/event/:event_id/people", get(person::get_people))

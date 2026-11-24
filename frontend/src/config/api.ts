@@ -48,6 +48,7 @@ const get = async <S extends z.Schema>(url: string, schema: S, auth?: string, ne
     headers: {
       ...auth && { Authorization: `Bearer ${auth}` },
     },
+    cache: nextOptions ? undefined : 'no-store',
     next: nextOptions,
   })
     .catch(console.warn)
@@ -69,12 +70,39 @@ const post = async <S extends z.Schema>(url: string, schema: S, input: unknown, 
   return schema.parse(await res.json())
 }
 
+const PersonLogin = PersonResponse.extend({ token: z.string() })
+export type PersonLogin = z.infer<typeof PersonLogin>
+
+const Submission = PersonResponse.extend({ submitted_at: z.number() })
+export type Submission = z.infer<typeof Submission>
+
+type EventEdit = { name: string; times?: string[] }
+
+const remove = async (url: string, token: string) => {
+  const res = await fetch(new URL(url, API_BASE), {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw res
+}
+
+const eventPath = (id: string) => `/event/${encodeURIComponent(id)}`
+const personPath = (id: string, name: string) => `${eventPath(id)}/people/${encodeURIComponent(name)}`
+const encodePassword = (password: string) => btoa(String.fromCharCode(...new TextEncoder().encode(password)))
+
+export const signInAdmin = (pin: string) => post('/admin/session', z.object({ token: z.string() }), { pin })
+export const signOutAdmin = (token: string) => remove('/admin/session', token)
+export const listEvents = (token: string) => get('/admin/events', EventResponse.array(), token)
+export const editEvent = (id: string, input: EventEdit, token: string) =>
+  post(`/admin/events/${encodeURIComponent(id)}`, EventResponse, input, token, 'PATCH')
+export const deleteEvent = (id: string, token: string) => remove(`/admin/events/${encodeURIComponent(id)}`, token)
+
 // Get
 export const getStats = () => get('/stats', StatsResponse, undefined, { revalidate: 60 })
-export const getEvent = (eventId: string) => get(`/event/${eventId}`, EventResponse)
-export const getPeople = (eventId: string) => get(`/event/${eventId}/people`, PersonResponse.array())
-export const getPerson = (eventId: string, personName: string, password?: string) => get(`/event/${eventId}/people/${personName}`, PersonResponse, password && btoa(password))
+export const getEvent = (eventId: string) => get(eventPath(eventId), EventResponse)
+export const getPeople = (eventId: string) => get(`${eventPath(eventId)}/people`, PersonResponse.array())
+export const getPerson = (eventId: string, personName: string, password?: string) => get(personPath(eventId, personName), PersonLogin, password && encodePassword(password))
 
 // Post
 export const createEvent = (input: EventInput) => post('/event', EventResponse, EventInput.parse(input))
-export const updatePerson = (eventId: string, personName: string, input: PersonInput, password?: string) => post(`/event/${eventId}/people/${personName}`, PersonResponse, PersonInput.parse(input), password && btoa(password), 'PATCH')
+export const updatePerson = (eventId: string, personName: string, input: PersonInput, token: string) => post(personPath(eventId, personName), Submission, PersonInput.parse(input), token, 'PATCH')
