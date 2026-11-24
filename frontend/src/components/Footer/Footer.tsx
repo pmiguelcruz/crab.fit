@@ -68,11 +68,18 @@ const Footer = () => {
         </Button>
       </div>
       <div id="about" className={styles.panel} hidden={panel !== 'about'}>
-        <p>Created by <a href="https://bengrant.dev" rel="author">Ben Grant</a>. Modified by <a href="https://github.com/pmiguelcruz/crab.fit">Pedro Cruz</a>.</p>
+        <p>Find a day everyone can make. Open an event link and mark when you’re free. Sign in to the event with a name and password. No site-wide account is needed.</p>
         <h2>Data privacy</h2>
-        <p>Event details, names, notes and availability are stored on Pedro’s home server in Providence, Rhode Island, a repurposed A95X F2 TV box running Debian.</p>
-        <p>Anyone with the event link can view the event and submit their own availability. A cookie remembers the links you have opened. This browser also saves access to your own entries.</p>
-        <p>Events are kept until someone manually deletes them.</p>
+        <p>Event details, names, notes, and availability are stored on Pedro’s home server in Providence, Rhode Island. It’s a repurposed A95X F2 TV box running Debian.</p>
+        <p>Anyone with the event link can view the event and submit their own availability. A cookie remembers the links you’ve opened, and this browser keeps track of your own entries.</p>
+        <p>Events stay on the server until an admin deletes them.</p>
+        <h2>Source code</h2>
+        <ul className={styles.sources}>
+          <li><a href="https://github.com/pmiguelcruz/crab.fit">Pedro’s fork</a></li>
+          <li><a href="https://github.com/GRA0007/crab.fit">Original project</a></li>
+          <li><a href="https://crab.fit/">Crab Fit</a></li>
+        </ul>
+        <p>Created by <a href="https://bengrant.dev" rel="author">Ben Grant</a>. Modified by Pedro Cruz.</p>
       </div>
       <div id="admin-sign-in" className={styles.panel} hidden={panel !== 'admin'}>
         {panel === 'admin' && <form className={styles.form} onSubmit={submit}>
