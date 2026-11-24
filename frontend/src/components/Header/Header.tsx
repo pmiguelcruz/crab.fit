@@ -1,10 +1,12 @@
 import localFont from 'next/font/local'
 import Link from 'next/link'
+import { type CSSProperties } from 'react'
 
 import logo from '/src/res/logo.svg'
 import { makeClass } from '/src/utils'
 
 import styles from './Header.module.scss'
+import HeaderPanels from './HeaderPanels'
 
 const molot = localFont({
   src: './molot.woff2',
@@ -17,16 +19,18 @@ interface HeaderProps {
   isSmall?: boolean
 }
 
-const Header = ({ isFull, isSmall }: HeaderProps) => <header className={styles.header} data-small={isSmall}>
+const logoMask = { '--accent-mask': `url("${logo.src}")` } as CSSProperties
+
+const Header = ({ isFull, isSmall }: HeaderProps) => <HeaderPanels isSmall={isSmall}>
     {isFull ? <>
-      {!isSmall && <img className={styles.bigLogo} src={logo.src} height={512} width={512} alt="" />}
-      <h1 className={makeClass(styles.bigTitle, molot.className)}>CRAB FIT</h1>
+      {!isSmall && <span className={makeClass('accent-icon', styles.bigLogo)} style={logoMask} aria-hidden="true" />}
+      <h1 className={makeClass('accent-text', styles.bigTitle, molot.className)}>CRAB FIT</h1>
     </> : <Link href="/" className={styles.link}>
       <div className={styles.top}>
-        <img className={styles.logo} src={logo.src} height={512} width={512} alt="" />
-        <span className={makeClass(styles.title, molot.className)}>CRAB FIT</span>
+        <span className={makeClass('accent-icon', styles.logo)} style={logoMask} aria-hidden="true" />
+        <span className={makeClass('accent-text', styles.title, molot.className)}>CRAB FIT</span>
       </div>
     </Link>}
-  </header>
+  </HeaderPanels>
 
 export default Header

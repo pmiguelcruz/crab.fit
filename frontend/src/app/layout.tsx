@@ -3,7 +3,6 @@ import { Karla } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/react'
 
 import Egg from '/src/components/Egg/Egg'
-import Footer from '/src/components/Footer/Footer'
 import Settings from '/src/components/Settings/Settings'
 import TranslateDialog from '/src/components/TranslateDialog/TranslateDialog'
 import { fallbackLng } from '/src/i18n/options'
@@ -43,10 +42,7 @@ const RootLayout = async ({ children }: { children: React.ReactNode }) => {
       <Egg />
       <TranslateDialog />
 
-      <div className="site-layout">
-        <main>{children}</main>
-        <Footer />
-      </div>
+      <main>{children}</main>
 
       <Analytics />
     </body>
