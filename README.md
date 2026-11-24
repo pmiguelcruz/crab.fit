@@ -26,15 +26,23 @@ Crab Fit is fully open-source, and you can get your own version running by follo
 
 ### Browser extension
 
-The extension in `browser-extension` can open Crab Fit using your own
-frontend URL. After loading it, open its options and save your frontend
-origin, such as `https://meet.example.org`.
+The toolbar popup keeps a local list of saved poll links. You can save a poll
+from the active tab or paste its link, then open, copy, or remove it from the
+list. Create a poll opens the Crab Fit form in a browser tab.
+
+It uses `https://crab.fit` by default. To use your own instance, open
+**Settings** and save its frontend origin, such as `https://meet.example.org`.
 
 - Chrome and Chromium accept the folder through **Load unpacked** on
   `chrome://extensions` with Developer mode enabled.
 - Firefox accepts its `manifest.json` through **Load Temporary Add-on**
   under **This Firefox** on `about:debugging`. Firefox keeps the temporary
   installation until it restarts.
+
+### Android companion
+
+The [Android companion](./android/README.md) saves and shares poll links, supports
+self-hosted instances, and opens the full Crab Fit app in the default browser.
 
 ### Contributing
 

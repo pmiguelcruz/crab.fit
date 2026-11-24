@@ -1,0 +1,7 @@
+Keep your Crab Fit scheduling polls in one place. Paste a poll link or send
+it to Crab Fit Companion from Android's Share menu. Open it in your browser
+to respond, or share the link with the group.
+
+Use crab.fit or enter the address of your own Crab Fit site. Poll links and
+settings are stored locally. Creating polls and submitting availability use
+the full Crab Fit website in your browser.

@@ -1,60 +1,44 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8">
-    <style>
-      body {
-        width: 360px;
-        height: 500px;
-        margin: 0;
-      }
-
-      @keyframes load {
-        from {
-          transform: rotate(0deg);
-        }
-        to {
-          transform: rotate(360deg);
-        }
-      }
-
-      #loader {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 360px;
-        height: 500px;
-        background-color: #FFFFFF;
-        z-index: -1;
-      }
-      #loader::after {
-        content: '';
-        position: absolute;
-        top: calc(50% - 15px);
-        left: calc(50% - 15px);
-        height: 24px;
-        width: 24px;
-        border: 3px solid #F79E00;
-        border-left-color: transparent;
-        border-radius: 100px;
-        animation: load .5s linear infinite;
-      }
-      @media (prefers-color-scheme: dark) {
-        #loader {
-          background-color: #111111;
-        }
-      }
-
-      iframe {
-        height: 100%;
-        width: 100%;
-        border: 0;
-      }
-    </style>
+    <title>Crab Fit</title>
+    <link rel="stylesheet" href="popup.css">
   </head>
   <body>
-    <div id="loader"></div>
-    <iframe title="Create a Crab Fit" allow="clipboard-write"></iframe>
+    <header>
+      <img src="res/icon48.png" width="32" height="32" alt="">
+      <h1>Crab Fit</h1>
+      <a href="options.html" target="_blank">Settings</a>
+    </header>
+    <div class="actions">
+      <a id="create" class="primary" href="https://crab.fit/create" target="_blank" rel="noopener">Create a poll</a>
+      <button id="save-tab" type="button" hidden>Save this poll</button>
+    </div>
+
+    <h2>Saved polls</h2>
+    <p id="empty" hidden>No saved polls yet.</p>
+    <ul id="polls"></ul>
+    <template id="poll-row">
+      <li>
+        <a class="poll-title" target="_blank" rel="noopener"></a>
+        <button class="copy" type="button">Copy link</button>
+        <button class="remove" type="button">Remove</button>
+      </li>
+    </template>
+
+    <details>
+      <summary>Save a poll link</summary>
+      <form>
+        <label for="poll-link">Poll link</label>
+        <input id="poll-link" type="url" autocomplete="off" required>
+        <label for="poll-title">Title (optional)</label>
+        <input id="poll-title" type="text" maxlength="255" autocomplete="off">
+        <button type="submit">Save poll</button>
+      </form>
+    </details>
+    <input id="copy-link" type="url" aria-label="Link to copy" readonly hidden>
+    <p id="status" role="status"></p>
     <script type="module" src="popup.js"></script>
   </body>
 </html>

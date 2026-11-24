@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Crab Fit Companion</string>
+    <string name="create_poll">Create a poll</string>
+    <string name="save_poll">Save a poll link</string>
+    <string name="saved_polls">Saved polls</string>
+    <string name="empty_polls">No saved polls yet.</string>
+    <string name="instance_settings">Crab Fit website</string>
+    <string name="instance_hint">https://crab.fit</string>
+    <string name="instance_help">Enter your Crab Fit website address or leave this blank to use crab.fit.</string>
+    <string name="instance_error">Enter an HTTP or HTTPS website address without a path.</string>
+    <string name="poll_link">Poll link</string>
+    <string name="poll_title">Title (optional)</string>
+    <string name="poll_link_error">Enter a poll link from %1$s.</string>
+    <string name="share_link">Share link</string>
+    <string name="share_poll">Share link for %1$s</string>
+    <string name="remove_poll">Remove %1$s</string>
+    <string name="remove">Remove</string>
+    <string name="browser_missing">A web browser is needed to open this link.</string>
+</resources>

@@ -9,4 +9,5 @@ export const normalizeOrigin = input => {
   return url.origin
 }
 
-export const settings = (globalThis.browser ?? globalThis.chrome).storage.local
+export const extension = globalThis.browser ?? globalThis.chrome
+export const settings = extension.storage.local

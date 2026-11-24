@@ -1,18 +1,19 @@
 {
   "name": "Crab Fit",
-  "description": "Enter your availability to find a time that works for everyone!",
-  "version": "1.3",
+  "description": "Save, share, and open your Crab Fit polls from the browser toolbar.",
+  "version": "1.4",
   "manifest_version": 3,
 
   "author": "Ben Grant",
   "homepage_url": "https://crab.fit",
 
-  "permissions": ["storage"],
+  "permissions": ["activeTab", "storage"],
   "options_ui": {
     "page": "options.html",
     "open_in_tab": true
   },
   "action": {
+    "default_title": "Crab Fit",
     "default_popup": "popup.html",
     "default_icon": {
       "16": "res/icon16.png",
