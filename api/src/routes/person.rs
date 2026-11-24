@@ -176,10 +176,9 @@ pub async fn get_person<A: Adaptor>(
                 .await
                 .map_err(ApiError::AdaptorError)?
                 .ok_or(ApiError::NotFound)?;
-            adaptor
-                .increment_stat_person_count()
-                .await
-                .map_err(ApiError::AdaptorError)?;
+            if let Err(error) = adaptor.increment_stat_person_count().await {
+                tracing::warn!(%error, "Could not count a newly created participant");
+            }
             person
         }
     };

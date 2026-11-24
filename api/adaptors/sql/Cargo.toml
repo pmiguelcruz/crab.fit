@@ -12,3 +12,4 @@ async-std = { version = "1", features = ["attributes", "tokio1"] }
 sea-orm-migration = "0.11.0"
 serde_json = "1.0.96"
 chrono = "0.4.24"
+tracing = "0.1.37"

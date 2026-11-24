@@ -116,11 +116,13 @@ impl Adaptor for SqlAdaptor {
     async fn get_event(&self, id: String) -> Result<Option<Event>, Self::Error> {
         let existing_event = EventEntity::find_by_id(id).one(&self.db).await?;
 
-        // Mark as visited
+        // A failed visit update must not discard a successfully read poll.
         if let Some(event) = existing_event.clone() {
             let mut event: event::ActiveModel = event.into();
             event.visited_at = Set(Utc::now().naive_utc());
-            event.save(&self.db).await?;
+            if let Err(error) = event.save(&self.db).await {
+                tracing::warn!(%error, "Could not record poll visit");
+            }
         }
 
         Ok(existing_event.map(|model| model.into()))

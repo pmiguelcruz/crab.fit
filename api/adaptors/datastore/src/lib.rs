@@ -158,10 +158,12 @@ impl Adaptor for DatastoreAdaptor {
         let key = Key::new(EVENT_KIND).id(id.clone());
         let existing_event = client.get::<DatastoreEvent, _>(key.clone()).await?;
 
-        // Mark as visited if it exists
+        // A failed visit update must not discard a successfully read poll.
         if let Some(mut event) = existing_event.clone() {
             event.visited = Utc::now().timestamp();
-            client.put((key, event)).await?;
+            if let Err(error) = client.put((key, event)).await {
+                tracing::warn!(%error, "Could not record poll visit");
+            }
         }
 
         Ok(existing_event.map(|e| e.to_event(id)))

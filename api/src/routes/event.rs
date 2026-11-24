@@ -143,11 +143,10 @@ pub async fn create_event<A: Adaptor>(
         .await
         .map_err(ApiError::AdaptorError)?;
 
-    // Update stats
-    adaptor
-        .increment_stat_event_count()
-        .await
-        .map_err(ApiError::AdaptorError)?;
+    // The poll is already stored, so a statistics failure must not hide its link.
+    if let Err(error) = adaptor.increment_stat_event_count().await {
+        tracing::warn!(%error, "Could not count a newly created poll");
+    }
 
     Ok((
         StatusCode::CREATED,
