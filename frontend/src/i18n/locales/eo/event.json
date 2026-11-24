@@ -1,0 +1,160 @@
+{
+  "available": "disponebla",
+  "greyed_times": "Ĉi tiu areo estas grizigita ĉar ĝi ne estas parto de la evento. Vi eble rigardas ĉi tiun eventon en malsama horzono de kie ĝi estis kreita.",
+  "nav": {
+    "title": "Klaku por kopii",
+    "copied": "Kopiita!",
+    "shareinfo": "Kopiu la ligon de ĉi tiu paĝo, aŭ kundividu <1>retpoŝte</1>.",
+    "shareinfo_alt": "Alklaku la supran ligilon por kopii ĝin al via tondujo, aŭ kundividu ĝin <1>retpoŝte</1>.",
+    "email_subject": "Planado {{event_name}}",
+    "email_body": "Vizitu ĉi tiun ligon por enigi viajn disponeblecoj:"
+  },
+  "form": {
+    "signed_out": "Ensalutu por aldoni vian disponeblon",
+    "signed_in": "Ensalutita kiel {{name}}",
+    "name": "Via nomo",
+    "password": "Pasvorto (laŭvole)",
+    "button": "Ensaluti",
+    "logout_button": "Elsaluti",
+    "info": "Ensalutu per nomo por ĉi tiu evento. Konto ne necesas. Uzu pasvorton por malebligi al aliaj ŝanĝi vian disponeblon.",
+    "timezone": "Via horzono",
+    "errors": {
+      "name_required": "Via nomo necesas por konservi vian disponeblon.",
+      "password_incorrect": "Pasvorto estas malĝusta. Kontrolu, ke via nomo estas literumita ĝuste.",
+      "unknown": "Malsukcesis ensaluti. Bonvolu reprovi."
+    },
+    "created_in_timezone": "Ĉi tiu evento estis kreita en la horzono <strong>{{timezone}} </strong>. <3>Klaku ĉi tie</3> por uzi ĝin.",
+    "local_timezone": "Via loka horzono ŝajnas esti <strong>{{timezone}}</strong>. <3>Klaku ĉi tie</3> por uzi ĝin."
+  },
+  "offline": {
+    "title": "Vi estas eksterrete",
+    "body": "Crab Fit ne funkcias eksterrete. <br />Certigu, ke vi estas konektita al la interreto kaj provu denove."
+  },
+  "error": {
+    "title": "Evento ne trovita",
+    "unavailable_title": "Ne eblis ŝargi la eventon",
+    "unavailable_body": "La eventa servo provizore ne disponeblas.",
+    "retry": "Reprovi",
+    "body": "Kontrolu, ke la url, kiun vi enigis, estas ĝusta. Notu, ke por protekti vian privatecon, eventoj estas forigitaj post 3 monatoj da neaktiveco."
+  },
+  "tabs": {
+    "you": "Via disponeblo",
+    "you_tooltip": "Ensalutu por indiki vian disponeblon",
+    "group": "Disponeblo de la grupo"
+  },
+  "group": {
+    "calendar": "Kalendaro de disponeblo",
+    "all_people": "Montri ĉiujn",
+    "no_people": "Kaŝi ĉiujn",
+    "isolate": "Montri nur unu personon",
+    "choose_person": "Elektu personon",
+    "legend_tooltip": "Klaku por emfazi la plej altan disponeblon",
+    "info1": "Ŝvebu aŭ frapetu la kalendaron sube por vidi kiu disponeblas, kaj alklaku por kopii detalojn pri temponiĉo",
+    "info2": "Alklaku la nomojn sube por vidi homojn individue",
+    "clipboard_message": "Homoj disponeblaj je {{date}}"
+  },
+  "overlap": {
+    "title": "Kompari horzonojn",
+    "instructions": "Komparu {{zone}} kun aliaj horzonoj. La samaj maldormaj horoj validas en ĉiuj zonoj.",
+    "additional": "Plia horzono",
+    "choose": "Elektu horzonon",
+    "add": "Aldoni horzonon",
+    "remove": "Forigi",
+    "remove_zone": "Forigi {{zone}}",
+    "from": "Maldorma ekde",
+    "to": "Maldorma ĝis",
+    "invalid": "Elektu du malsamajn horojn por vidi la interkovron.",
+    "calculating": "Kalkulante la interkovron…",
+    "result_one": "{{count}} markita intervalo estas ene de la maldormaj horoj en ĉiuj zonoj.",
+    "result_other": "{{count}} markitaj intervaloj estas ene de la maldormaj horoj en ĉiuj zonoj.",
+    "inside": "Ene de la maldormaj horoj en ĉiuj zonoj",
+    "outside": "Ekster la maldormaj horoj en almenaŭ unu zono"
+  },
+  "tentative": {
+    "mode": "Marki disponeblon kiel",
+    "firm": "Disponebla",
+    "label": "Provizora",
+    "unmarked": "Nemarkita",
+    "count_one": "{{count}} provizora respondo",
+    "count_other": "{{count}} provizoraj respondoj",
+    "person": "{{name}} (provizore)",
+    "people": "Provizore disponeblaj: {{people}}",
+    "times_help": "Punktitaj intervaloj havas provizorajn respondojn. Ili decidas inter intervaloj kun la sama nombro de disponeblaj homoj.",
+    "days_help": "Nombroj post + indikas provizorajn respondojn. Ili decidas inter datoj kun la sama nombro de disponeblaj homoj."
+  },
+  "teams": {
+    "optional": "Grupoj de partoprenantoj (laŭvole)",
+    "configure": "Partoprenantoj povas elekti grupon kiam ili sendas respondon.",
+    "number": "Grupo {{number}}",
+    "add": "Aldoni grupon",
+    "remove": "Forigi",
+    "remove_number": "Forigi grupon {{number}}",
+    "invalid": "Donu malsaman nomon al ĉiu grupo.",
+    "your_group": "Via grupo",
+    "unassigned": "Neniu grupo",
+    "responses": "Respondoj laŭ grupo",
+    "group_count_one": "{{group}}, {{count}} respondo",
+    "group_count_other": "{{group}}, {{count}} respondoj",
+    "receipt": "Grupo: {{group}}"
+  },
+  "days": {
+    "calendar": "Datoj de la voĉdono",
+    "month": "Monato",
+    "editor_info": "Elektu la datojn, en kiuj vi povas partopreni.",
+    "group_info": "Elektu daton por vidi, kiu povas partopreni.",
+    "count_one": "{{date}}, {{count}} disponebla",
+    "count_other": "{{date}}, {{count}} disponeblaj",
+    "nobody": "Neniu disponeblas en tiu dato."
+  },
+  "submission": {
+    "submit": "Sendi disponeblon",
+    "remove_self": "Forigi mian respondon",
+    "remove_confirm": "Ĉu forigi vian nomon kaj konservitan disponeblon el ĉi tiu evento?",
+    "remove": "Forigi respondon",
+    "cancel": "Nuligi",
+    "removed": "Via respondo estas forigita.",
+    "remove_failed": "Ne eblis forigi vian respondon. Reprovu.",
+    "saved": "Via disponeblo estas sendita.",
+    "download": "Elŝuti kvitancon",
+    "failed": "Ne eblis sendi vian disponeblon. Reprovu.",
+    "expired": "Via ensaluto eksvalidiĝis. Ensalutu denove por sendi la respondon.",
+    "schedule_changed": "La horaro de la evento ŝanĝiĝis. Reŝargu la paĝon antaŭ ol sendi.",
+    "receipt_title": "Kvitanco pri disponeblo en Crab Fit",
+    "receipt_event": "Evento: {{name}}",
+    "receipt_participant": "Partoprenanto: {{name}}",
+    "receipt_time": "Sendita: {{time}} ({{timezone}})",
+    "receipt_empty": "Neniu tempo elektita."
+  },
+  "you": {
+    "info": "Klaku kaj trenu por elekti horojn, kaj poste sendu vian disponeblon.",
+    "select_all": "Elekti ĉion",
+    "select_none": "Elektu nenion",
+    "select_invert": "Inverti elekton",
+    "google_cal": "Sinkronigi kun Google Calendar",
+    "outlook_cal": "Sinkronigi kun Outlook Calendar",
+    "recent_event": "Sinkronigi kun lastatempa evento",
+    "icalendar": {
+      "title": "Importi iCalendar",
+      "file": "Dosiero",
+      "url": "Ligilo al kalendaro",
+      "choose_file": "Kalendara dosiero",
+      "calendar_url": "URL de la kalendara eksporto",
+      "url_description": "Uzu ligilon HTTP, HTTPS aŭ webcal, kiu liveras iCalendar-dosieron.",
+      "day_info": "Tagoj kun almenaŭ unu okupita momento estas preterlasitaj. Importado anstataŭigas la nunan malneton.",
+      "imported_one": "{{count}} disponebla elekto estas importita en vian malneton.",
+      "imported_other": "{{count}} disponeblaj elektoj estas importitaj en vian malneton.",
+      "invalid_url": "Enigu URL-on de kalendara eksporto sen uzantnomo aŭ pasvorto.",
+      "url_failed": "Ne eblis legi tiun kalendaran ligilon. Vi povas elŝuti kaj importi la kalendaran dosieron.",
+      "invalid_file": "Ne eblis legi la iCalendar-datumojn. Kontrolu la dosieron aŭ la eksportan ligilon.",
+      "limit": "La kalendaro estas tro granda aŭ enhavas tro multajn ripetiĝantajn eventojn por importi.",
+      "timeout": "La importado de la kalendaro daŭris tro longe."
+    },
+    "integration": {
+      "logout": "elsaluti",
+      "close": "fermi",
+      "info": "Importado anstataŭigas vian nunan malneton.",
+      "failed": "Ne eblis legi disponeblon el la elektitaj kalendaroj. Reprovu.",
+      "button": "Importi disponeblon"
+    }
+  }
+}

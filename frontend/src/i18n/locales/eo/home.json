@@ -1,0 +1,77 @@
+{
+  "create": "KREU",
+  "recently_visited": "Lastatempe vizitita",
+  "form": {
+    "name": {
+      "label": "Donu nomon al via evento!",
+      "sublabel": "Aŭ lasu malplenan por generi unu"
+    },
+    "dates": {
+      "label": "Kiuj datoj povus funkcii?",
+      "sublabel": "Klaku kaj trenu por elekti",
+      "options": {
+        "specific": "Specifaj datoj",
+        "week": "Tagoj de la semajno"
+      },
+      "tooltips": {
+        "previous": "Antaŭa monato",
+        "next": "Venontmonate",
+        "today": "Hodiaŭ"
+      },
+      "warnings": {
+        "date_in_past": "Kelkaj el la datoj, kiujn vi elektis, estas en la pasinteco"
+      }
+    },
+    "windows": {
+      "customize": "Agordi la horintervalojn",
+      "simple": "Uzi unu horintervalon",
+      "shared": "Samaj horintervaloj en ĉiuj datoj",
+      "per_day": "Malsamaj horintervaloj por ĉiu dato",
+      "select_dates": "Elektu datojn supre por agordi iliajn horintervalojn.",
+      "start": "Komenco",
+      "end": "Fino",
+      "end_of_day": "Fino de la tago (noktomezo)",
+      "add": "Aldoni horintervalon",
+      "remove": "Forigi horintervalon"
+    },
+    "slot_size": {
+      "label": "Pri kio voĉdoni?",
+      "quarter_hour": "15-minutaj intervaloj",
+      "half_hour": "30-minutaj intervaloj",
+      "hour": "60-minutaj intervaloj",
+      "day": "Nur datoj"
+    },
+    "times": {
+      "label": "Kiuj tempoj povus funkcii?",
+      "sublabel": "Klaku kaj trenu por elekti tempon"
+    },
+    "timezone": {
+      "label": "Kaj la horzono",
+      "defaultOption": "Elektu..."
+    },
+    "button": "Krei",
+    "errors": {
+      "no_times": "Neniu el tiuj horoj okazas en la elektitaj datoj.",
+      "no_dates": "Ne estas elektitaj datoj",
+      "same_times": "La komenco kaj fintempo ne povas esti la sama",
+      "no_time": "Neniu tempo estas elektita",
+      "unknown": "Io misfunkciis. Bonvolu reprovi poste."
+    }
+  },
+  "about": {
+    "name": "Pri Crab Fit",
+    "events": "Eventoj kreitaj",
+    "availabilities": "Disponebloj eniris",
+    "content": {
+      "p1": "Crab Fit helpas vin adapti vian eventon al ĉies horaroj. Simple kreu eventon supre kaj sendu la ligon al ĉiuj partoprenantoj. Rezultoj ĝisdatigas vive kaj vi povos vidi varmmapon pri kiam ĉiuj estas liberaj. <1/><2>Lernu pli pri kiel Crab Fit</2>.",
+      "p3": "Kreita de <1>Ben Grant</1>, Crab Fit estas la nuntempa solvo por viaj grupaj eventoplanaj debatoj.",
+      "p4": "La kodo por Crab Fit estas malfermfonta, se vi trovas problemojn aŭ volas kontribui, vi povas viziti la <1>deponejon</1>. Uzante Crab Fit vi konsentas pri la <3>privateca politiko</3>.",
+      "p6": "Por protekti vian privatecon, eventoj estas forigitaj post 3 monatoj da neaktiveco, kaj ĉiuj pasvortoj estas sekure hakitaj.",
+      "p5": "Konsideru donaci sube, se ĝi helpis vin, por ke Crab Fit povu resti senpaga por ĉiuj. 🦀"
+    },
+    "chrome_extension": "Akiru la Kroman Etendon",
+    "firefox_extension": "Akiru la Etendon de Firefox",
+    "safari_extension": "Akiru la Safari-Etendaĵon",
+    "android_app": "Elŝutu la Android-apon"
+  }
+}

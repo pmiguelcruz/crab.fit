@@ -27,12 +27,13 @@ On November 23, 2026, the upstream repository had 56 open issues. This records t
 - Voters can import iCalendar files and shared export URLs on polls with calendar dates. Export links work directly with CORS or through an opt-in relay for trusted origins. Chromium and WebKit passed link and file import checks with local fixtures. [#245](https://github.com/GRA0007/crab.fit/issues/245)
 - Voters can mark dates or time slots as tentative, and receipts preserve that distinction. The best-slot highlight uses tentative responses only to break a tie in confirmed availability. Verified in Chromium and WebKit, including responses saved before the SQLite migration. [#307](https://github.com/GRA0007/crab.fit/issues/307)
 - A poll can have named respondent groups. Participants can choose a group when submitting, and results show a count and filter for each group. Admins can rename groups without losing assignments. Chromium and WebKit passed poll creation, group submission, filtering, and rename checks. [#358](https://github.com/GRA0007/crab.fit/issues/358)
+- Esperanto is available in the language picker. The fork includes the community translations and Esperanto strings for the new features. WebKit displayed the translated create form, poll, and group results. [#336](https://github.com/GRA0007/crab.fit/issues/336)
+- The entire French heading uses a face that supports the accented glyph. Chromium displayed “CRÉER UN” and reported the same font family for the whole heading. [#345](https://github.com/GRA0007/crab.fit/issues/345)
 
 ## Code changed, with verification or coverage pending
 
 - The fork distinguishes API failure from a missing event and shares the correct host. The original hosted reports remain unverified. [#356](https://github.com/GRA0007/crab.fit/issues/356), [#328](https://github.com/GRA0007/crab.fit/issues/328)
 - A MySQL migration converts the legacy TIMESTAMP columns to DATETIME. Live MySQL migration remains unverified. [#355](https://github.com/GRA0007/crab.fit/issues/355)
-- Accented heading text uses the fallback face. Locale-specific visual verification remains open. [#345](https://github.com/GRA0007/crab.fit/issues/345)
 - Calendar import uses the true range and checks errors and partial-slot conflicts. A live authenticated Google Calendar test remains open. [#343](https://github.com/GRA0007/crab.fit/issues/343)
 - The Docker builder and runtime use the same Debian release and the runtime installs libssl3. A container build and start remain unverified. [#315](https://github.com/GRA0007/crab.fit/issues/315), [#305](https://github.com/GRA0007/crab.fit/issues/305)
 - In-memory cleanup preserves participants for active polls. The older hosted data-loss report remains unverified. [#303](https://github.com/GRA0007/crab.fit/issues/303)
@@ -41,6 +42,5 @@ On November 23, 2026, the upstream repository had 56 open issues. This records t
 ## Open work
 
 - Vote notifications, cross-poll availability sync, and participant email lists. These need shared identities or a delivery service. [#331](https://github.com/GRA0007/crab.fit/issues/331), [#323](https://github.com/GRA0007/crab.fit/issues/323), [#308](https://github.com/GRA0007/crab.fit/issues/308), [#135](https://github.com/GRA0007/crab.fit/issues/135)
-- The external connection failure needs a reproducible case or diagnostics from that deployment. [#354](https://github.com/GRA0007/crab.fit/issues/354)
-- Esperanto translation files are absent from the upstream checkout. [#336](https://github.com/GRA0007/crab.fit/issues/336)
+- Both reported URLs returned an HTTP response from the local test network. The affected user's connection failure still needs diagnostics from that network. [#354](https://github.com/GRA0007/crab.fit/issues/354)
 - F-Droid publication needs the Android project and store submission. [#33](https://github.com/GRA0007/crab.fit/issues/33)
