@@ -133,6 +133,24 @@ impl Adaptor for DatastoreAdaptor {
         Ok(Some(person))
     }
 
+    async fn delete_person(&self, event_id: String, name: String) -> Result<bool, Self::Error> {
+        let mut client = self.client.lock().await;
+        let people = client
+            .query(
+                Query::new(PERSON_KIND)
+                    .filter(Filter::Equal("eventId".into(), event_id.into_value()))
+                    .filter(Filter::Equal("name".into(), name.into_value())),
+            )
+            .await?;
+        if people.is_empty() {
+            return Ok(false);
+        }
+        client
+            .delete_all(people.iter().map(|person| person.key()))
+            .await?;
+        Ok(true)
+    }
+
     async fn get_event(&self, id: String) -> Result<Option<Event>, Self::Error> {
         let mut client = self.client.lock().await;
 

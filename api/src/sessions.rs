@@ -39,6 +39,15 @@ impl Sessions {
             .map(|(session, _)| session)
     }
 
+    pub fn revoke_participant(&mut self, event_id: &str, person_name: Option<&str>) {
+        self.entries.retain(|_, (session, _)| match session {
+            Session::Admin => true,
+            Session::Participant { event, name } => {
+                event != event_id || person_name.is_some_and(|person| name != person)
+            }
+        });
+    }
+
     pub fn revoke(&mut self, token: &str) {
         self.entries.remove(token);
     }
@@ -68,6 +77,7 @@ impl AdminPin {
     pub fn verify(&mut self, guess: &str) -> Result<(), axum::http::StatusCode> {
         use axum::http::StatusCode;
 
+        let pin = self.pin.as_deref().ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
         let now = Instant::now();
         if self.resets_at <= now {
             self.attempts = 0;
@@ -76,12 +86,60 @@ impl AdminPin {
         if self.attempts >= 5 {
             return Err(StatusCode::TOO_MANY_REQUESTS);
         }
-        if self.pin.as_deref() == Some(guess) {
+        if pin == guess {
             self.attempts = 0;
             self.resets_at = now;
             return Ok(());
         }
         self.attempts += 1;
         Err(StatusCode::UNAUTHORIZED)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use axum::http::StatusCode;
+
+    use super::*;
+
+    #[test]
+    fn admin_pin_locks_after_five_bad_guesses() {
+        let mut pin = AdminPin::new(Some("7315".to_owned()));
+        assert!(pin.verify("7315").is_ok());
+        for _ in 0..5 {
+            assert_eq!(pin.verify("4620"), Err(StatusCode::UNAUTHORIZED));
+        }
+        assert_eq!(pin.verify("7315"), Err(StatusCode::TOO_MANY_REQUESTS));
+        let mut unset = AdminPin::new(None);
+        assert_eq!(unset.verify("7315"), Err(StatusCode::SERVICE_UNAVAILABLE));
+    }
+
+    #[test]
+    fn participant_removal_revokes_only_matching_sessions() {
+        let mut sessions = Sessions::default();
+        let issued = |sessions: &mut Sessions, event: &str, name: &str| {
+            sessions
+                .issue(
+                    Session::Participant {
+                        event: event.into(),
+                        name: name.into(),
+                    },
+                    PARTICIPANT_TTL,
+                )
+                .unwrap()
+        };
+        let target = issued(&mut sessions, "event-a", "participant");
+        let other_person = issued(&mut sessions, "event-a", "another");
+        let other_event = issued(&mut sessions, "event-b", "participant");
+        let admin = sessions.issue(Session::Admin, ADMIN_TTL).unwrap();
+        sessions.revoke_participant("event-a", Some("participant"));
+        assert!(sessions.get(&target).is_none());
+        assert!(sessions.get(&other_person).is_some());
+        assert!(sessions.get(&other_event).is_some());
+
+        sessions.revoke_participant("event-a", None);
+        assert!(sessions.get(&other_person).is_none());
+        assert!(sessions.get(&other_event).is_some());
+        assert!(sessions.get(&admin) == Some(&Session::Admin));
     }
 }

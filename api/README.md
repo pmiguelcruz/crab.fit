@@ -45,7 +45,9 @@ The API limits failed admin PIN attempts to five in a 15-minute window.
 Management lists events in the configured store, including events created
 before this update. Renaming or moving dates preserves the event URL and
 responses on overlapping slots. The availability grid displays responses only
-on the current schedule. Deleting an event also deletes its responses.
+on the current schedule. Duplicating an event gives its schedule a new
+link. An admin can remove individual participants or delete the event and
+all its responses. A signed-in participant may also remove their own response.
 
 Participant login at `GET /event/{event_id}/people/{person_name}` returns a
 one-hour token in the `token` field. Use it as the bearer credential for one

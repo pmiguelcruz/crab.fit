@@ -96,6 +96,11 @@ async fn main() {
             "/admin/events/:id",
             patch(admin::update_event).delete(admin::delete_event),
         )
+        .route("/admin/events/:id/people", get(admin::list_people))
+        .route(
+            "/admin/events/:id/people/:name",
+            axum::routing::delete(admin::delete_person),
+        )
         .route("/event", post(event::create_event))
         .route("/event/:event_id", get(event::get_event))
         .route("/event/:event_id/people", get(person::get_people))
@@ -105,7 +110,7 @@ async fn main() {
         )
         .route(
             "/event/:event_id/people/:person_name",
-            patch(person::update_person),
+            patch(person::update_person).delete(person::delete_person),
         )
         .route("/tasks/cleanup", get(tasks::cleanup))
         .with_state(shared_state)

@@ -11,7 +11,7 @@ import Error from '/src/components/Error/Error'
 import Login from '/src/components/Login/Login'
 import Section from '/src/components/Section/Section'
 import SelectField from '/src/components/SelectField/SelectField'
-import { EventResponse, getPeople, PersonLogin, PersonResponse, Submission, updatePerson } from '/src/config/api'
+import { EventResponse, getPeople, PersonLogin, PersonResponse, removeOwnResponse, Submission, updatePerson } from '/src/config/api'
 import { useCalendarSettings } from '/src/hooks/useCalendarSettings'
 import { useTranslation } from '/src/i18n/client'
 import timezones from '/src/res/timezones.json'
@@ -36,6 +36,8 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
   const [user, setUser] = useState<PersonLogin>()
   const [draft, setDraft] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
+  const [confirmRemoval, setConfirmRemoval] = useState(false)
+  const [removed, setRemoved] = useState(false)
   const [receipt, setReceipt] = useState<{ submission: Submission; timezone: string }>()
   const [submitError, setSubmitError] = useState('')
 
@@ -119,6 +121,32 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
     }
   }
 
+  const removeResponse = async () => {
+    if (!event || !user || submitting) return
+    setSubmitting(true)
+    setSubmitError('')
+    try {
+      await removeOwnResponse(event.id, user.name, user.token)
+      addRecent({ id: event.id, name: event.name, created_at: event.created_at, user: undefined })
+      setUser(undefined)
+      setDraft([])
+      setReceipt(undefined)
+      setRemoved(true)
+      setTab('group')
+    } catch (e) {
+      if (e instanceof Response && e.status === 401) {
+        setUser(undefined)
+        setTab('group')
+        setSubmitError(t('submission.expired'))
+      } else {
+        setSubmitError(t('submission.remove_failed'))
+      }
+    } finally {
+      setConfirmRemoval(false)
+      setSubmitting(false)
+    }
+  }
+
   return <>
     <Section id="login">
       <Content>
@@ -126,6 +154,8 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
           setUser(person)
           setDraft(person?.availability ?? [])
           setSubmitError('')
+          setConfirmRemoval(false)
+          setRemoved(false)
           setTab(person ? 'you' : 'group')
           if (person) setReceipt(undefined)
         }} />
@@ -176,6 +206,7 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
 
     <Content>
       <Error onClose={() => setSubmitError('')}>{submitError}</Error>
+      {removed && <p role="status">{t('submission.removed')}</p>}
       {event && receipt && <SubmissionReceipt event={event} {...receipt} />}
       <div className={styles.tabs}>
         <button
@@ -220,9 +251,16 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
       />
       <Content isCentered>
         <div className={styles.submission}>
-          <Button isLoading={submitting} disabled={submitting || !table} onClick={submit}>
-            {t('submission.submit')}
-          </Button>
+          {confirmRemoval ? <>
+            <p>{t('submission.remove_confirm')}</p>
+            <Button isLoading={submitting} disabled={submitting} onClick={removeResponse}>{t('submission.remove')}</Button>
+            <Button isSecondary disabled={submitting} onClick={() => setConfirmRemoval(false)}>{t('submission.cancel')}</Button>
+          </> : <>
+            <Button isLoading={submitting} disabled={submitting || !table} onClick={submit}>
+              {t('submission.submit')}
+            </Button>
+            <Button isSecondary disabled={submitting} onClick={() => setConfirmRemoval(true)}>{t('submission.remove_self')}</Button>
+          </>}
         </div>
       </Content>
     </>}

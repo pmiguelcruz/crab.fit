@@ -20,6 +20,8 @@ pub trait Adaptor: Send + Sync {
         person: Person,
     ) -> Result<Option<Person>, Self::Error>;
 
+    async fn delete_person(&self, event_id: String, name: String) -> Result<bool, Self::Error>;
+
     /// Get an event and update visited date to current time
     async fn get_event(&self, id: String) -> Result<Option<Event>, Self::Error>;
     async fn create_event(&self, event: Event) -> Result<Event, Self::Error>;

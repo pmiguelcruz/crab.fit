@@ -43,7 +43,7 @@ impl Adaptor for MemoryAdaptor {
         let state = self.state.lock().await;
 
         // Event doesn't exist
-        if state.events.get(&event_id).is_none() {
+        if !state.events.contains_key(&event_id) {
             return Ok(None);
         }
 
@@ -71,7 +71,7 @@ impl Adaptor for MemoryAdaptor {
         let mut state = self.state.lock().await;
 
         // Check event exists
-        if state.events.get(&event_id).is_none() {
+        if !state.events.contains_key(&event_id) {
             return Ok(None);
         }
 
@@ -80,6 +80,16 @@ impl Adaptor for MemoryAdaptor {
             .insert((event_id, person.name.clone()), person.clone());
 
         Ok(Some(person))
+    }
+
+    async fn delete_person(&self, event_id: String, name: String) -> Result<bool, Self::Error> {
+        Ok(self
+            .state
+            .lock()
+            .await
+            .people
+            .remove(&(event_id, name))
+            .is_some())
     }
 
     async fn get_event(&self, id: String) -> Result<Option<Event>, Self::Error> {
@@ -193,3 +203,60 @@ impl Display for MemoryAdaptorError {
 }
 
 impl Error for MemoryAdaptorError {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cleanup_keeps_responses_for_active_events() {
+        tokio::runtime::Runtime::new().unwrap().block_on(async {
+            let store = MemoryAdaptor::new().await;
+            let now = Utc::now();
+            let old = now - chrono::Duration::days(91);
+
+            for (id, visited_at) in [("old", old), ("active", now)] {
+                store
+                    .create_event(Event {
+                        id: id.into(),
+                        name: id.into(),
+                        created_at: old,
+                        visited_at,
+                        times: vec!["0900-1".into()],
+                        timezone: "UTC".into(),
+                    })
+                    .await
+                    .unwrap();
+                store
+                    .upsert_person(
+                        id.into(),
+                        Person {
+                            name: "Participant".into(),
+                            password_hash: None,
+                            created_at: old,
+                            availability: vec!["0900-1".into()],
+                        },
+                    )
+                    .await
+                    .unwrap();
+            }
+
+            let deleted = store
+                .delete_events(now - chrono::Duration::days(90))
+                .await
+                .unwrap();
+            assert_eq!(deleted.event_count, 1);
+            assert_eq!(deleted.person_count, 1);
+            assert!(store.get_people("old".into()).await.unwrap().is_none());
+            assert_eq!(
+                store
+                    .get_people("active".into())
+                    .await
+                    .unwrap()
+                    .unwrap()
+                    .len(),
+                1
+            );
+        });
+    }
+}

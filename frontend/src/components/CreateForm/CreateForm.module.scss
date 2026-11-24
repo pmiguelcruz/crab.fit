@@ -2,3 +2,19 @@
   display: flex;
   justify-content: center;
 }
+
+.windows {
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid var(--tertiary);
+  border-radius: 6px;
+  min-inline-size: 0;
+}
+
+.window {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-block-end: 12px;
+}

@@ -9,7 +9,7 @@ use common::Adaptor;
 use crate::{
     errors::ApiError,
     payloads::{ApiResult, EventEdit, EventResponse, PinInput, TokenResponse},
-    routes::event::valid_times,
+    routes::{event::valid_times, person::remove_person},
     sessions::{Session, ADMIN_TTL},
     State,
 };
@@ -105,17 +105,46 @@ pub async fn delete_event<A: Adaptor>(
     Path(id): Path<String>,
     bearer: BearerHeader,
 ) -> Result<StatusCode, ApiError<A>> {
-    let state = state.lock().await;
+    let mut state = state.lock().await;
     admin_token(&state.sessions, &bearer)?;
     if !state
         .adaptor
-        .delete_event(id)
+        .delete_event(id.clone())
         .await
         .map_err(ApiError::AdaptorError)?
     {
         return Err(ApiError::NotFound);
     }
+    state.sessions.revoke_participant(&id, None);
     Ok(StatusCode::NO_CONTENT)
+}
+
+pub async fn list_people<A: Adaptor>(
+    extract::State(state): State<A>,
+    Path(id): Path<String>,
+    bearer: BearerHeader,
+) -> Result<([(header::HeaderName, &'static str); 1], Json<Vec<String>>), ApiError<A>> {
+    let state = state.lock().await;
+    admin_token(&state.sessions, &bearer)?;
+    let people = state
+        .adaptor
+        .get_people(id)
+        .await
+        .map_err(ApiError::AdaptorError)?
+        .ok_or(ApiError::NotFound)?;
+    let mut names: Vec<_> = people.into_iter().map(|person| person.name).collect();
+    names.sort_unstable_by_key(|name| name.to_lowercase());
+    Ok(([(header::CACHE_CONTROL, "no-store")], Json(names)))
+}
+
+pub async fn delete_person<A: Adaptor>(
+    extract::State(state): State<A>,
+    Path((event_id, person_name)): Path<(String, String)>,
+    bearer: BearerHeader,
+) -> Result<StatusCode, ApiError<A>> {
+    let mut state = state.lock().await;
+    admin_token(&state.sessions, &bearer)?;
+    remove_person(&mut state, event_id, person_name).await
 }
 
 fn admin_token<'a, A: Adaptor>(

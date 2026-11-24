@@ -102,6 +102,13 @@ impl Adaptor for SqlAdaptor {
         ))
     }
 
+    async fn delete_person(&self, event_id: String, name: String) -> Result<bool, Self::Error> {
+        let result = PersonEntity::delete_by_id((name, event_id))
+            .exec(&self.db)
+            .await?;
+        Ok(result.rows_affected > 0)
+    }
+
     async fn get_event(&self, id: String) -> Result<Option<Event>, Self::Error> {
         let existing_event = EventEntity::find_by_id(id).one(&self.db).await?;
 

@@ -93,6 +93,11 @@ export const signOutAdmin = (token: string) => remove('/admin/session', token)
 export const listEvents = (token: string) => get('/admin/events', EventResponse.array(), token)
 export const editEvent = (id: string, input: EventEdit, token: string) =>
   post(`/admin/events/${encodeURIComponent(id)}`, EventResponse, input, token, 'PATCH')
+const adminPeoplePath = (id: string) => `/admin/events/${encodeURIComponent(id)}/people`
+export const listParticipants = (id: string, token: string) => get(adminPeoplePath(id), z.string().array(), token)
+export const removeParticipant = (id: string, name: string, token: string) =>
+  remove(`${adminPeoplePath(id)}/${encodeURIComponent(name)}`, token)
+export const removeOwnResponse = (id: string, name: string, token: string) => remove(personPath(id, name), token)
 export const deleteEvent = (id: string, token: string) => remove(`/admin/events/${encodeURIComponent(id)}`, token)
 
 // Get

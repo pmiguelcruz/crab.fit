@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use axum::{
     extract::{self, Path},
     headers::{authorization::Bearer, Authorization},
-    http::header,
+    http::{header, StatusCode},
     Json, TypedHeader,
 };
 use base64::{engine::general_purpose, Engine};
@@ -179,14 +179,7 @@ pub async fn update_person<A: Adaptor>(
     Json(input): Json<PersonInput>,
 ) -> ApiResult<Submission, A> {
     let mut state = state.lock().await;
-    let bearer = bearer.ok_or(ApiError::NotAuthorized)?;
-    let token = bearer.0.token();
-    let Some(Session::Participant { event, name }) = state.sessions.get(token) else {
-        return Err(ApiError::NotAuthorized);
-    };
-    if event != &event_id || name != &person_name {
-        return Err(ApiError::NotAuthorized);
-    }
+    let token = participant_token(&state.sessions, &bearer, &event_id, &person_name)?;
 
     let adaptor = &state.adaptor;
     let times = adaptor
@@ -228,6 +221,50 @@ pub async fn update_person<A: Adaptor>(
         person: person.into(),
         submitted_at: chrono::Utc::now().timestamp(),
     }))
+}
+
+pub async fn delete_person<A: Adaptor>(
+    extract::State(state): State<A>,
+    Path((event_id, person_name)): Path<(String, String)>,
+    bearer: Option<TypedHeader<Authorization<Bearer>>>,
+) -> Result<StatusCode, ApiError<A>> {
+    let mut state = state.lock().await;
+    participant_token(&state.sessions, &bearer, &event_id, &person_name)?;
+    remove_person(&mut state, event_id, person_name).await
+}
+
+pub(super) async fn remove_person<A: Adaptor>(
+    state: &mut crate::ApiState<A>,
+    event_id: String,
+    person_name: String,
+) -> Result<StatusCode, ApiError<A>> {
+    if !state
+        .adaptor
+        .delete_person(event_id.clone(), person_name.clone())
+        .await
+        .map_err(ApiError::AdaptorError)?
+    {
+        return Err(ApiError::NotFound);
+    }
+    state
+        .sessions
+        .revoke_participant(&event_id, Some(&person_name));
+    Ok(StatusCode::NO_CONTENT)
+}
+
+fn participant_token<'a, A: Adaptor>(
+    sessions: &crate::sessions::Sessions,
+    bearer: &'a Option<TypedHeader<Authorization<Bearer>>>,
+    event_id: &str,
+    person_name: &str,
+) -> Result<&'a str, ApiError<A>> {
+    let token = bearer.as_ref().ok_or(ApiError::NotAuthorized)?.0.token();
+    match sessions.get(token) {
+        Some(Session::Participant { event, name }) if event == event_id && name == person_name => {
+            Ok(token)
+        }
+        _ => Err(ApiError::NotAuthorized),
+    }
 }
 
 fn expand_times(times: &[String]) -> HashSet<String> {

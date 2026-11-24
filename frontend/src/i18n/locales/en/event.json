@@ -63,6 +63,12 @@
 
   "submission": {
     "submit": "Submit availability",
+    "remove_self": "Remove my response",
+    "remove_confirm": "Remove your name and saved availability from this event?",
+    "remove": "Remove response",
+    "cancel": "Cancel",
+    "removed": "Your response was removed.",
+    "remove_failed": "Could not remove your response. Try again.",
     "saved": "Availability submitted.",
     "download": "Download receipt",
     "failed": "Could not submit availability. Try again.",

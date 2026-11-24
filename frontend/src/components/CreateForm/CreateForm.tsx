@@ -1,9 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { SubmitHandler, useForm } from 'react-hook-form'
+import { SubmitHandler, useForm, useWatch } from 'react-hook-form'
 import { useRouter } from 'next/navigation'
-import { range } from '@giraugh/tools'
 import { Temporal } from '@js-temporal/polyfill'
 
 import Button from '/src/components/Button/Button'
@@ -16,18 +15,17 @@ import { createEvent, EventResponse } from '/src/config/api'
 import { useTranslation } from '/src/i18n/client'
 import timezones from '/src/res/timezones.json'
 import useRecentsStore from '/src/stores/recentsStore'
+import { serializeTime } from '/src/utils'
 
 import EventInfo from './components/EventInfo/EventInfo'
+import ScheduleWindows, { hoursInWindow, TimeWindow } from './components/ScheduleWindows'
 import styles from './CreateForm.module.scss'
 
 interface Fields {
   name: string
   /** As `YYYY-MM-DD` or `d` */
   dates: string[]
-  time: {
-    start: number
-    end: number
-  }
+  time: TimeWindow
   timezone: string
 }
 
@@ -55,6 +53,12 @@ const CreateForm = ({ noRedirect, onCreated }: CreateFormProps) => {
     control,
   } = useForm({ defaultValues })
 
+  const dates = useWatch({ control, name: 'dates' })
+  const time = useWatch({ control, name: 'time' })
+  const [customize, setCustomize] = useState(false)
+  const [windowMode, setWindowMode] = useState<'shared' | 'perDay'>('shared')
+  const [windows, setWindows] = useState<Record<string, TimeWindow[]>>({})
+
   const [isLoading, setIsLoading] = useState(false)
   const [createdEvent, setCreatedEvent] = useState<EventResponse>()
   const [error, setError] = useState<React.ReactNode>()
@@ -69,34 +73,21 @@ const CreateForm = ({ noRedirect, onCreated }: CreateFormProps) => {
       if (dates.length === 0) {
         return setError(t('form.errors.no_dates'))
       }
-      if (time.start === time.end) {
-        return setError(t('form.errors.same_times'))
-      }
-
-      // If format is `YYYY-MM-DD` or `d`
       const isSpecificDates = dates[0].length !== 1
-
-      const times = dates.flatMap(dateStr => {
-        const date = isSpecificDates
-          ? Temporal.PlainDate.from(dateStr)
-          : Temporal.Now.plainDateISO().add({ days: Number(dateStr) - Temporal.Now.plainDateISO().dayOfWeek })
-
-        const hours = time.start > time.end ? [...range(0, time.end - 1), ...range(time.start, 23)] : range(time.start, time.end - 1)
-
-        return hours.map(hour => {
-          const dateTime = date.toZonedDateTime({ timeZone: timezone, plainTime: Temporal.PlainTime.from({ hour }) }).withTimeZone('UTC')
-          if (isSpecificDates) {
-            // Format as `HHmm-DDMMYYYY`
-            return `${dateTime.hour.toString().padStart(2, '0')}${dateTime.minute.toString().padStart(2, '0')}-${dateTime.day.toString().padStart(2, '0')}${dateTime.month.toString().padStart(2, '0')}${dateTime.year.toString().padStart(4, '0')}`
-          } else {
-            // Format as `HHmm-d`
-            return `${dateTime.hour.toString().padStart(2, '0')}${dateTime.minute.toString().padStart(2, '0')}-${String(dateTime.dayOfWeek === 7 ? 0 : dateTime.dayOfWeek)}`
-          }
-        })
-      })
-
-      if (times.length === 0) {
-        return setError(t('form.errors.no_time'))
+      const today = Temporal.Now.plainDateISO(timezone)
+      const times: string[] = []
+      for (const dateStr of new Set(dates)) {
+        const date = isSpecificDates ? Temporal.PlainDate.from(dateStr)
+          : today.add({ days: Number(dateStr) - today.dayOfWeek })
+        const ranges = customize ? windows[windowMode === 'perDay' ? dateStr : 'shared'] ?? [time] : [time]
+        const hours = ranges.map(hoursInWindow)
+        if (hours.some(range => range.length === 0)) {
+          return setError(t('form.errors.same_times'))
+        }
+        for (const hour of new Set(hours.flat())) {
+          const zoned = date.toZonedDateTime({ timeZone: timezone, plainTime: Temporal.PlainTime.from({ hour }) })
+          times.push(serializeTime(zoned, isSpecificDates))
+        }
       }
 
       const newEvent = await createEvent({ name, times, timezone }).catch(e => {
@@ -145,12 +136,22 @@ const CreateForm = ({ noRedirect, onCreated }: CreateFormProps) => {
       name="dates"
     />
 
-    <TimeRangeField
+    {customize ? <ScheduleWindows
+      dates={dates}
+      mode={windowMode}
+      onModeChange={setWindowMode}
+      windows={windows}
+      onChange={(date, ranges) => setWindows(current => ({ ...current, [date]: ranges }))}
+      initialWindow={{ ...time, start: time.start % 24 }}
+    /> : <TimeRangeField
       label={t('form.times.label')}
       description={t('form.times.sublabel')}
       control={control}
       name="time"
-    />
+    />}
+    <Button isSmall isSecondary aria-expanded={customize} onClick={() => setCustomize(value => !value)}>
+      {t(customize ? 'form.windows.simple' : 'form.windows.customize')}
+    </Button>
 
     <SelectField
       label={t('form.timezone.label')}

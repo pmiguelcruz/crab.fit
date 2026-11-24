@@ -22,6 +22,18 @@
         "date_in_past": "Some of the dates you've selected are in the past"
       }
     },
+    "windows": {
+      "customize": "Customize time windows",
+      "simple": "Use one time window",
+      "shared": "Same windows for all dates",
+      "per_day": "Different windows for each date",
+      "select_dates": "Choose dates above to set their time windows.",
+      "start": "Start",
+      "end": "End",
+      "end_of_day": "End of day (midnight)",
+      "add": "Add a time window",
+      "remove": "Remove window"
+    },
     "times": {
       "label": "What times might work?",
       "sublabel": "Click and drag to select a time range"

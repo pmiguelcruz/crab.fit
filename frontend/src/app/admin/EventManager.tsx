@@ -8,11 +8,12 @@ import Content from '/src/components/Content/Content'
 import CreateForm from '/src/components/CreateForm/CreateForm'
 import Error from '/src/components/Error/Error'
 import Section from '/src/components/Section/Section'
-import { deleteEvent, EventResponse, listEvents, signOutAdmin } from '/src/config/api'
+import { createEvent, deleteEvent, EventResponse, listEvents, signOutAdmin } from '/src/config/api'
 import { useTranslation } from '/src/i18n/client'
 
 import styles from './admin.module.scss'
 import EventEditor from './EventEditor'
+import Respondents from './Respondents'
 
 const EventManager = () => {
   const { t, i18n } = useTranslation('admin')
@@ -21,6 +22,7 @@ const EventManager = () => {
   const [creating, setCreating] = useState(false)
   const [editId, setEditId] = useState('')
   const [deleteId, setDeleteId] = useState('')
+  const [respondentsId, setRespondentsId] = useState('')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
@@ -69,6 +71,21 @@ const EventManager = () => {
         setDeleteId('')
         setMessage(t('deleted', { name: event.name }))
       } else setError(t('delete_error'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const duplicate = async (event: EventResponse) => {
+    setBusy(true)
+    setError('')
+    try {
+      const name = t('copy_name', { name: [...event.name].slice(0, 245).join('') })
+      const copy = await createEvent({ name, times: event.times, timezone: event.timezone })
+      setEvents(events => [copy, ...(events ?? [])])
+      setMessage(t('duplicated', { name: copy.name }))
+    } catch {
+      setError(t('duplicate_error'))
     } finally {
       setBusy(false)
     }
@@ -130,12 +147,20 @@ const EventManager = () => {
                   setError(t('copy_error'))
                 }
               }}>{t('copy')}</Button>
+              <Button isSmall isSecondary disabled={busy} onClick={() => duplicate(event)}>{t('duplicate')}</Button>
+              <Button isSmall isSecondary disabled={busy} aria-expanded={respondentsId === event.id} onClick={() => {
+                setEditId('')
+                setDeleteId('')
+                setRespondentsId(id => id === event.id ? '' : event.id)
+              }}>{t('respondents')}</Button>
               <Button isSmall isSecondary disabled={busy || editId === event.id} onClick={() => {
                 setDeleteId('')
+                setRespondentsId('')
                 setEditId(event.id)
               }}>{t('edit')}</Button>
               <Button isSmall isSecondary disabled={busy || deleteId === event.id} onClick={() => {
                 setEditId('')
+                setRespondentsId('')
                 setDeleteId(event.id)
               }}>{t('delete')}</Button>
             </div>
@@ -151,6 +176,7 @@ const EventManager = () => {
               setMessage(t('saved', { name: updated.name }))
             }}
           />}
+          {token && respondentsId === event.id && <Respondents id={event.id} token={token} onExpired={clearSession} />}
           {deleteId === event.id && <div className={styles.confirm}>
             <p>{t('delete_confirm', { name: event.name })}</p>
             <div className={styles.actions}>
