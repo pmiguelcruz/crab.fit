@@ -14,6 +14,7 @@
     "signed_in": "Ensalutita kiel {{name}}",
     "name": "Via nomo",
     "password": "Pasvorto (laŭvole)",
+    "password_required": "Pasvorto",
     "button": "Ensaluti",
     "logout_button": "Elsaluti",
     "info": "Ensalutu per nomo por ĉi tiu evento. Konto ne necesas. Uzu pasvorton por malebligi al aliaj ŝanĝi vian disponeblon.",
@@ -21,6 +22,7 @@
     "errors": {
       "name_required": "Via nomo necesas por konservi vian disponeblon.",
       "password_incorrect": "Pasvorto estas malĝusta. Kontrolu, ke via nomo estas literumita ĝuste.",
+      "sign_in_failed": "Ne eblis ensaluti. Kontrolu la pasvorton aŭ uzu alian nomon.",
       "unknown": "Malsukcesis ensaluti. Bonvolu reprovi."
     },
     "created_in_timezone": "Ĉi tiu evento estis kreita en la horzono <strong>{{timezone}} </strong>. <3>Klaku ĉi tie</3> por uzi ĝin.",

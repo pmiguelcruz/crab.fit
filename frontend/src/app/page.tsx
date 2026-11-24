@@ -4,7 +4,6 @@ import Link from 'next/link'
 
 import About from '/src/components/About/About'
 import Content from '/src/components/Content/Content'
-import CreateForm from '/src/components/CreateForm/CreateForm'
 import Footer from '/src/components/Footer/Footer'
 import Header from '/src/components/Header/Header'
 import { P } from '/src/components/Paragraph/Text'
@@ -22,10 +21,6 @@ const Page = async () => {
     </Content>
 
     <Recents />
-
-    <Content>
-      <CreateForm />
-    </Content>
 
     <Section id="about">
       <Content>

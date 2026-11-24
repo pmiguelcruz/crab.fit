@@ -6,13 +6,15 @@ use axum::{
     Json,
 };
 use common::{Adaptor, Event, EventGroup, SlotSize};
-use rand::{distributions::Alphanumeric, seq::SliceRandom, thread_rng, Rng};
-use regex::Regex;
+use rand::{distributions::Alphanumeric, rngs::OsRng, seq::SliceRandom, thread_rng, Rng};
 
 use crate::{
     errors::ApiError,
     payloads::{ApiResult, EventInput, EventResponse, GroupEdit},
-    routes::person::available_slots,
+    routes::{
+        admin::{admin_token, BearerHeader},
+        person::available_slots,
+    },
     ApiState, State,
 };
 
@@ -43,7 +45,11 @@ pub async fn get_event<A: Adaptor>(
         .map_err(ApiError::AdaptorError)?;
 
     match event {
-        Some(event) => Ok(Json(read_event_response(&state, event).await)),
+        Some(event) => {
+            let mut response = event_response(&state, event);
+            response.notifications_available = None;
+            Ok(Json(response))
+        }
         None => Err(ApiError::NotFound),
     }
 }
@@ -80,27 +86,31 @@ pub(super) async fn read_event_response<A: Adaptor>(
 
 #[utoipa::path(
     post,
-    path = "/event",
+    path = "/admin/events",
     request_body(content = EventInput, description = "New event details"),
     responses(
         (status = 201, description = "Created", body = EventResponse),
+        (status = 401, description = "Admin session required"),
         (status = 415, description = "Unsupported input format"),
         (status = 422, description = "Invalid input provided"),
         (status = 429, description = "Too many requests"),
     ),
+    security(("admin-session" = [])),
     tag = "event",
 )]
 /// Create a new event
 pub async fn create_event<A: Adaptor>(
     extract::State(state): State<A>,
+    bearer: BearerHeader,
     Json(input): Json<EventInput>,
 ) -> Result<(StatusCode, Json<EventResponse>), ApiError<A>> {
+    let state = state.lock().await;
+    admin_token(&state.sessions, &bearer)?;
     if !valid_choices(&input.times, input.slot_size)
         || input.timezone.parse::<chrono_tz::Tz>().is_err()
     {
         return Err(ApiError::InvalidInput);
     }
-    let state = state.lock().await;
     let adaptor = &state.adaptor;
 
     // Get the current timestamp
@@ -128,7 +138,7 @@ pub async fn create_event<A: Adaptor>(
     }
 
     // Generate an ID
-    let mut id = generate_id(&name);
+    let mut id = generate_id();
 
     // Check the ID doesn't already exist
     while (adaptor
@@ -137,7 +147,7 @@ pub async fn create_event<A: Adaptor>(
         .map_err(ApiError::AdaptorError)?)
     .is_some()
     {
-        id = generate_id(&name);
+        id = generate_id();
     }
 
     let event = adaptor
@@ -221,25 +231,15 @@ fn generate_name() -> String {
     )
 }
 
-// Generate a slug for the crab fit
-fn generate_id(name: &str) -> String {
-    let mut id = encode_name(name.to_string());
-    if id.replace('-', "").is_empty() {
-        id = encode_name(generate_name());
-    }
-    id.truncate(248);
-    let number = thread_rng().gen_range(100000..=999999);
-    format!("{}-{}", id, number)
-}
-
-// Use punycode to encode the name
-fn encode_name(name: String) -> String {
-    let pc = punycode::encode(&name.trim().to_lowercase())
-        .unwrap_or(String::from(""))
-        .trim()
-        .replace(|c: char| !c.is_ascii_alphanumeric() && c != ' ', "");
-    let re = Regex::new(r"\s+").unwrap();
-    re.replace_all(&pc, "-").to_string()
+// Keep titles out of participant links and generate a non-enumerable ID.
+fn generate_id() -> String {
+    let random: String = OsRng
+        .sample_iter(Alphanumeric)
+        .map(|byte| char::from(byte.to_ascii_lowercase()))
+        .take(32)
+        .collect();
+    // Retain the link shape recognized by the browser and Android companions.
+    format!("{random}-{}", OsRng.gen_range(100000..=999999))
 }
 
 pub(super) fn valid_choices(choices: &[String], slot_size: Option<SlotSize>) -> bool {

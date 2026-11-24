@@ -144,24 +144,25 @@ export const deleteEvent = (id: string, token: string) => remove(`/admin/events/
 // Get
 export const getStats = () => get('/stats', StatsResponse, undefined, { revalidate: 60 })
 export const getEvent = (eventId: string) => get(eventPath(eventId), EventResponse)
-export const getPeople = (eventId: string) => get(`${eventPath(eventId)}/people`, PersonResponse.array())
-export const getSharedEmails = (eventId: string) => get(`${eventPath(eventId)}/emails`, z.string().array())
+export const getPeople = (eventId: string, token: string) => get(`${eventPath(eventId)}/people`, PersonResponse.array(), token)
+export const getSharedEmails = (eventId: string, token: string) => get(`${eventPath(eventId)}/emails`, z.string().array(), token)
 export type NotificationMode = 'change' | 'responses' | 'quorum'
 type NotificationEnrollment = { mode: NotificationMode; email: string; count?: number }
 
 export const postVoteNotifications = async (
   eventId: string,
   request: NotificationEnrollment | { action: 'confirm' | 'unsubscribe'; token: string },
+  token?: string,
 ) => {
   const suffix = 'action' in request ? `/${request.action}` : ''
   const response = await fetch(new URL(`${eventPath(eventId)}/notifications${suffix}`, API_BASE), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body: JSON.stringify(request),
   })
   if (!response.ok) throw response
 }
-export const getPerson = (eventId: string, personName: string, password?: string) => get(personPath(eventId, personName), PersonLogin, password && encodePassword(password))
+export const getPerson = (eventId: string, personName: string, password: string) => get(personPath(eventId, personName), PersonLogin, encodePassword(password))
 export const previewProfile = (eventId: string, personName: string, key: string, token: string) =>
   post(`${personPath(eventId, personName)}/profile`, z.object({
     availability: z.string().array(),
@@ -169,5 +170,5 @@ export const previewProfile = (eventId: string, personName: string, key: string,
   }), { key }, token)
 
 // Post
-export const createEvent = (input: EventInput) => post('/event', EventResponse, EventInput.parse(input))
+export const createEvent = (input: EventInput, token: string) => post('/admin/events', EventResponse, EventInput.parse(input), token)
 export const updatePerson = (eventId: string, personName: string, input: PersonInput, token: string) => post(personPath(eventId, personName), Submission, PersonInput.parse(input), token, 'PATCH')

@@ -58,6 +58,10 @@ impl Modify for SecurityAddon {
             ),
         );
         openapi.components.as_mut().unwrap().add_security_scheme(
+            "admin-session",
+            SecurityScheme::Http(HttpBuilder::new().scheme(HttpAuthScheme::Bearer).build()),
+        );
+        openapi.components.as_mut().unwrap().add_security_scheme(
             "participant-session",
             SecurityScheme::Http(HttpBuilder::new().scheme(HttpAuthScheme::Bearer).build()),
         );

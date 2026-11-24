@@ -66,7 +66,8 @@ async fn main() {
     let shared_state = Arc::new(Mutex::new(ApiState {
         adaptor: create_adaptor().await,
         sessions: sessions::Sessions::default(),
-        admin_pin: sessions::AdminPin::new(env::var("ADMIN_PIN").ok()),
+        admin_pin: sessions::AdminPin::load(env::var("ADMIN_PIN_KEY").ok().as_deref())
+            .expect("Could not configure admin sign-in"),
         notifications,
         profiles: availability_profiles::AvailabilityProfiles::from_env()
             .await
@@ -111,7 +112,10 @@ async fn main() {
         .route("/", get(get_root))
         .route("/stats", get(stats::get_stats))
         .route("/admin/session", post(admin::login).delete(admin::logout))
-        .route("/admin/events", get(admin::list_events))
+        .route(
+            "/admin/events",
+            get(admin::list_events).post(event::create_event),
+        )
         .route(
             "/admin/events/:id",
             patch(admin::update_event).delete(admin::delete_event),

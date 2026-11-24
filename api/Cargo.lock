@@ -651,9 +651,8 @@ dependencies = [
  "email_address",
  "lettre",
  "memory-adaptor",
- "punycode",
  "rand",
- "regex",
+ "ring",
  "serde",
  "serde_json",
  "sha2",
@@ -2471,12 +2470,6 @@ dependencies = [
  "quote",
  "syn 1.0.109",
 ]
-
-[[package]]
-name = "punycode"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e9e1dcb320d6839f6edb64f7a4a59d39b30480d4d1765b56873f7c858538a5fe"
 
 [[package]]
 name = "quanta"

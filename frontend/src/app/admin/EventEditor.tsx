@@ -72,7 +72,6 @@ const EventEditor = ({ event, token, onSaved, onCancel, onExpired }: Props) => {
     <fieldset className={styles.editor} disabled={busy}>
       <legend>{t('edit_event')}</legend>
       <TextField label={t('title')} name="title" defaultValue={event.name} required maxLength={255} />
-      {!datesOnly && <p>{t('dates_timezone', { timezone: event.timezone })}</p>}
       {originals.length === 0 && <p>{t('schedule_unavailable')}</p>}
       {days.map((day, index) => {
         const field = {

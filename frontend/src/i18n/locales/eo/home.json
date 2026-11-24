@@ -1,7 +1,20 @@
 {
   "create": "KREU",
   "recently_visited": "Lastatempe vizitita",
+  "event_history": {
+    "title": "Viaj eventoj",
+    "empty": "Via eventolisto estas malplena. Malfermu kundividitan ligilon al evento por indiki kiam vi estas libera. La evento aperos ĉi tie la venontan fojon, kiam vi vizitos per ĉi tiu retumilo.",
+    "loading": "Ŝargante eventojn…",
+    "unavailable": "Ne eblis ŝargi kelkajn eventojn."
+  },
   "form": {
+    "labels": {
+      "title": "Titolo",
+      "dates": "Datoj",
+      "slot_size": "Tempintervaloj",
+      "times": "Horoj",
+      "timezone": "Horzono"
+    },
     "name": {
       "label": "Donu nomon al via evento!",
       "sublabel": "Aŭ lasu malplenan por generi unu"

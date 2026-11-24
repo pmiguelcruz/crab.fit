@@ -16,6 +16,7 @@
 
     "name": "Your name",
     "password": "Password (optional)",
+    "password_required": "Password",
     "button": "Sign in",
     "logout_button": "Sign out",
     "info": "Sign in with a name for this event. No account is required. Use a password to prevent others from changing your availability.",
@@ -25,6 +26,7 @@
     "errors": {
       "name_required": "Your name is needed to store your availability.",
       "password_incorrect": "Password is incorrect. Check your name is spelled right.",
+      "sign_in_failed": "Could not sign in. Check your password or use another name.",
       "unknown": "Failed to login. Please try again."
     },
 

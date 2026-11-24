@@ -17,7 +17,7 @@ use crate::{
     State,
 };
 
-type BearerHeader = Option<TypedHeader<Authorization<Bearer>>>;
+pub(super) type BearerHeader = Option<TypedHeader<Authorization<Bearer>>>;
 
 pub async fn login<A: Adaptor>(
     extract::State(state): State<A>,
@@ -217,7 +217,7 @@ pub async fn delete_person<A: Adaptor>(
     remove_person(&mut state, event_id, person_name).await
 }
 
-fn admin_token<'a, A: Adaptor>(
+pub(super) fn admin_token<'a, A: Adaptor>(
     sessions: &crate::sessions::Sessions,
     bearer: &'a BearerHeader,
 ) -> Result<&'a str, ApiError<A>> {

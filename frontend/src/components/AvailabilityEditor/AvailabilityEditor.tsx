@@ -83,7 +83,6 @@ const AvailabilityEditor = ({ eventId, times, timezone, datesOnly, interval = 15
 
   return <>
     <Content isCentered>
-      <div>{t(datesOnly ? 'days.editor_info' : 'you.info')}</div>
       {onChangeTentative && <div className={styles.selectionControls} role="group" aria-label={t('tentative.mode')}>
         <Button isSmall isSecondary={markTentative} aria-pressed={!markTentative} onClick={() => setMarkTentative(false)}>
           {t('tentative.firm')}

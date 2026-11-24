@@ -11,7 +11,7 @@ import styles from './page.module.scss'
 
 type Action = { action: 'confirm' | 'unsubscribe'; token: string }
 
-const VoteNotifications = ({ eventId }: { eventId: string }) => {
+const VoteNotifications = ({ eventId, adminToken }: { eventId: string; adminToken?: string }) => {
   const { t } = useTranslation('event')
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<NotificationMode>('change')
@@ -49,7 +49,7 @@ const VoteNotifications = ({ eventId }: { eventId: string }) => {
         email,
         mode,
         count: mode === 'change' ? undefined : Number(data.get('notification-count')),
-      })
+      }, adminToken)
       setMessage(t('notifications.check_email'))
       form.reset()
       setMode('change')
@@ -75,6 +75,8 @@ const VoteNotifications = ({ eventId }: { eventId: string }) => {
     }
   }
 
+  if (!adminToken && !linkAction && !message) return null
+
   return <div className={styles.noPrint}>
     <Content>
       <details ref={section} className={styles.voteNotifications} open={open} onToggle={event => setOpen(event.currentTarget.open)}>
@@ -84,7 +86,7 @@ const VoteNotifications = ({ eventId }: { eventId: string }) => {
           <Button isSmall disabled={loading} isLoading={loading} onClick={() => manage(linkAction)}>
             {t(linkAction.action === 'confirm' ? 'notifications.confirm' : 'notifications.stop')}
           </Button>
-        </> : <form onSubmit={enroll}>
+        </> : adminToken && <form onSubmit={enroll}>
           <TextField
             name="notification-email"
             label={t('email.address')}

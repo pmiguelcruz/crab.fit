@@ -7,7 +7,13 @@ use common::Adaptor;
 use serde::Deserialize;
 
 use crate::{
-    errors::ApiError, notifications::Trigger, routes::person::normalize_shared_email, State,
+    errors::ApiError,
+    notifications::Trigger,
+    routes::{
+        admin::{admin_token, BearerHeader},
+        person::normalize_shared_email,
+    },
+    State,
 };
 
 #[derive(Deserialize)]
@@ -35,8 +41,11 @@ impl NotificationToken {
 pub async fn subscribe<A: Adaptor>(
     extract::State(state): State<A>,
     Path(event): Path<String>,
+    bearer: BearerHeader,
     Json(input): Json<EmailSubscription>,
 ) -> Result<StatusCode, ApiError<A>> {
+    let state = state.lock().await;
+    admin_token(&state.sessions, &bearer)?;
     if !input.trigger.valid() {
         return Err(ApiError::InvalidInput);
     }
@@ -44,7 +53,6 @@ pub async fn subscribe<A: Adaptor>(
     if email.parse::<lettre::Address>().is_err() {
         return Err(ApiError::InvalidSharedEmail);
     }
-    let state = state.lock().await;
     let notifications = state.notifications.as_ref().ok_or(ApiError::Unavailable)?;
     state
         .adaptor

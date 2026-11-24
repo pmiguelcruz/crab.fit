@@ -6,7 +6,7 @@ import Header from '/src/components/Header/Header'
 import EventManager from './EventManager'
 
 export const metadata: Metadata = {
-  title: 'Manage Crab Fits',
+  title: 'Events',
   robots: { index: false, follow: false },
 }
 

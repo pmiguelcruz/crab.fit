@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Trans } from 'react-i18next/TransWithoutContext'
 
 import AvailabilityEditor from '/src/components/AvailabilityEditor/AvailabilityEditor'
 import AvailabilityViewer from '/src/components/AvailabilityViewer/AvailabilityViewer'
@@ -18,7 +17,8 @@ import { useCalendarSettings } from '/src/hooks/useCalendarSettings'
 import { useTranslation } from '/src/i18n/client'
 import timezones from '/src/res/timezones.json'
 import useRecentsStore from '/src/stores/recentsStore'
-import { calculateTable, CalculateTableReply, expandTimes, makeClass } from '/src/utils'
+import { readVisitedEvents, saveVisitedEvents } from '/src/stores/visitedEvents'
+import { calculateTable, CalculateTableReply, expandTimes } from '/src/utils'
 import { clockMinutes } from '/src/utils/awakeOverlap'
 import { formatPollChoice } from '/src/utils/formatPollChoice'
 import { slotMinutes } from '/src/utils/slotSize'
@@ -31,6 +31,8 @@ import VoteNotifications from './VoteNotifications'
 
 interface EventAvailabilitiesProps {
   event?: EventResponse
+  adminToken?: string
+  onAdminExpired?: () => void
 }
 
 interface GroupResults {
@@ -39,7 +41,7 @@ interface GroupResults {
   failed?: boolean
 }
 
-const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
+const EventAvailabilities = ({ event, adminToken, onAdminExpired }: EventAvailabilitiesProps) => {
   const { t, i18n } = useTranslation('event')
 
   const { weekStart, timeFormat } = useCalendarSettings(i18n.language)
@@ -65,14 +67,10 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
   const [receipt, setReceipt] = useState<{ submission: Submission; timezone: string }>()
   const [submitError, setSubmitError] = useState('')
 
-  const [tab, setTab] = useState<'group' | 'you'>('group')
   // Use the same initial timezone on the server and in the browser.
   const [timezone, setTimezone] = useState(event?.timezone ?? 'UTC')
-  const [localTimezone, setLocalTimezone] = useState<string>()
   useEffect(() => {
-    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone
-    setLocalTimezone(zone)
-    setTimezone(zone)
+    setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone)
   }, [])
 
   const [overlap, setOverlap] = useState<OverlapSettings>({ zones: [], from: '08:00', to: '22:00' })
@@ -121,27 +119,34 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
   // Add this event to recents
   const addRecent = useRecentsStore(state => state.addRecent)
   useEffect(() => {
-    if (event) {
+    if (event && !adminToken) {
+      const history = readVisitedEvents() ?? useRecentsStore.getState().recents.map(recent => recent.id)
+      saveVisitedEvents([event.id, ...history])
       addRecent({
         id: event.id,
         name: event.name,
         created_at: event.created_at,
       })
     }
-  }, [addRecent])
+  }, [addRecent, adminToken, event])
 
   // Refetch availabilities
   useEffect(() => {
-    if (tab !== 'group' || !event) return
+    if (!adminToken || !event) return
     let active = true
     let fetching = false
     const refresh = async () => {
       if (fetching) return
       fetching = true
       try {
-        const people = await getPeople(event.id)
+        const people = await getPeople(event.id, adminToken)
         if (active) setResults({ eventId: event.id, people })
-      } catch {
+      } catch (error) {
+        if (active && error instanceof Response && error.status === 401) {
+          setResults(undefined)
+          onAdminExpired?.()
+          return
+        }
         if (active) setResults(previous => ({
           eventId: event.id,
           people: previous?.eventId === event.id ? previous.people : undefined,
@@ -159,7 +164,7 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
       active = false
       window.clearInterval(timer)
     }
-  }, [event, resultsRevision, tab])
+  }, [adminToken, event, onAdminExpired, resultsRevision])
 
   const submit = async () => {
     if (!event || !user || submitting) return
@@ -187,11 +192,9 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
       setTentative([])
       setSharedEmail(undefined)
       setProfile(undefined)
-      setTab('group')
     } catch (e) {
       if (e instanceof Response && e.status === 401) {
         setUser(undefined)
-        setTab('group')
         setSubmitError(t('submission.expired'))
       } else if (e instanceof Response && e.status === 403) {
         setSubmitError(t('profiles.key_required'))
@@ -220,11 +223,9 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
       setProfile(undefined)
       setReceipt(undefined)
       setRemoved(true)
-      setTab('group')
     } catch (e) {
       if (e instanceof Response && e.status === 401) {
         setUser(undefined)
-        setTab('group')
         setSubmitError(t('submission.expired'))
       } else {
         setSubmitError(t('submission.remove_failed'))
@@ -238,7 +239,7 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
   return <>
     <Section id="login">
       <Content>
-        <Login eventId={event?.id} user={user} disabled={submitting} onChange={person => {
+        {!adminToken && <Login eventId={event?.id} user={user} disabled={submitting} onChange={person => {
           setUser(person)
           setDraft(person?.availability ?? [])
           setTentative(person?.tentative ?? [])
@@ -248,11 +249,10 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
           setSubmitError('')
           setConfirmRemoval(false)
           setRemoved(false)
-          setTab(person ? 'you' : 'group')
           if (person) setReceipt(undefined)
-        }} />
+        }} />}
 
-        {!datesOnly && <>
+        {!datesOnly && (user || adminToken) && <>
           <SelectField
             label={t('form.timezone')}
             name="timezone"
@@ -263,31 +263,6 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
             options={timezones}
           />
 
-          {event?.timezone && event.timezone !== timezone && <p>
-            <Trans i18nKey="form.created_in_timezone" t={t} i18n={i18n}>
-              {/* eslint-disable-next-line */}
-              {/* @ts-ignore */}
-              _<strong>{{timezone: event.timezone}}</strong>
-              _<a href="#" onClick={e => {
-                e.preventDefault()
-                changeTimezone(event.timezone)
-              }}>_</a>_
-            </Trans>
-          </p>}
-
-          {localTimezone && localTimezone !== timezone && localTimezone !== event?.timezone && (
-            <p>
-              <Trans i18nKey="form.local_timezone" t={t} i18n={i18n}>
-                {/* eslint-disable-next-line */}
-                {/* @ts-ignore */}
-                _<strong>{{timezone: localTimezone}}</strong>
-                _<a href="#" onClick={e => {
-                  e.preventDefault()
-                  changeTimezone(localTimezone)
-                }}>_</a>_
-              </Trans>
-            </p>
-          )}
           {event && <TimeZoneOverlap
             timezone={timezone}
             settings={overlap}
@@ -308,37 +283,11 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
           choice: formatPollChoice(event, event.final_choice, i18n.language, timezone),
         })}
       </p>}
-      <div className={styles.tabs}>
-        <button
-          className={makeClass(
-            styles.tab,
-            tab === 'you' && styles.tabSelected,
-            !user && styles.tabDisabled,
-          )}
-          type="button"
-          onClick={() => {
-            if (user) {
-              setTab('you')
-            } else {
-              document.dispatchEvent(new CustomEvent('focusName'))
-            }
-          }}
-          title={user ? '' : t('tabs.you_tooltip')}
-        >{t('tabs.you')}</button>
-        <button
-          className={makeClass(
-            styles.tab,
-            tab === 'group' && styles.tabSelected,
-          )}
-          type="button"
-          onClick={() => setTab('group')}
-        >{t('tabs.group')}</button>
-      </div>
     </Content>
 
-    {event?.notifications_available && <VoteNotifications key={event.id} eventId={event.id} />}
-    {tab === 'group' ? <>
-      {event && <SharedEmails key={`emails-${event.id}`} eventId={event.id} />}
+    {event && (!adminToken || event.notifications_available) && <VoteNotifications key={event.id} eventId={event.id} adminToken={adminToken} />}
+    {adminToken ? <>
+      {event && <SharedEmails key={`emails-${event.id}`} eventId={event.id} adminToken={adminToken} />}
       {currentResults?.failed && <Content>
         <div className={styles.shareEmails}>
           <span role="alert">{t(currentResults.people ? 'group.refresh_failed' : 'group.load_failed')}</span>
@@ -394,7 +343,6 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
         {sharedEmail !== undefined && <TextField
           name="shared-email"
           label={t('email.address')}
-          description={t('email.purpose')}
           type="email"
           autoComplete="email"
           ref={emailField}

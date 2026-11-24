@@ -45,7 +45,6 @@ const ScheduleWindows = ({ dates, mode, onModeChange, windows, onChange, initial
       value={mode}
       onChange={onModeChange}
     />
-    {mode === 'perDay' && dates.length === 0 && <p>{t('form.windows.select_dates')}</p>}
     {(mode === 'perDay' ? [...new Set(dates)].sort() : ['shared']).map(date => {
       const ranges = windows[date] ?? [initialWindow]
       const title = date === 'shared' ? t('form.windows.shared') : date.length === 1

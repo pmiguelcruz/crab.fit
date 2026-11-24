@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 
 import Button from '/src/components/Button/Button'
@@ -11,6 +11,7 @@ import Section from '/src/components/Section/Section'
 import { createEvent, deleteEvent, EventResponse, listEvents, signOutAdmin } from '/src/config/api'
 import { useTranslation } from '/src/i18n/client'
 import { formatPollChoice } from '/src/utils/formatPollChoice'
+import EventAvailabilities from '../[id]/EventAvailabilities'
 
 import styles from './admin.module.scss'
 import EventEditor from './EventEditor'
@@ -25,16 +26,19 @@ const EventManager = () => {
   const [editId, setEditId] = useState('')
   const [deleteId, setDeleteId] = useState('')
   const [respondentsId, setRespondentsId] = useState('')
+  const [resultsId, setResultsId] = useState('')
   const [finalChoiceId, setFinalChoiceId] = useState('')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
-  const clearSession = () => {
+  const clearSession = useCallback(() => {
     sessionStorage.removeItem('crab-fit-admin')
     setToken(null)
     setEvents(undefined)
-  }
+    setCreating(false)
+    setResultsId('')
+  }, [])
 
   useEffect(() => {
     const stored = sessionStorage.getItem('crab-fit-admin')
@@ -50,7 +54,7 @@ const EventManager = () => {
       else setError(t('list_error'))
     })
     return () => { active = false }
-  }, [t])
+  }, [t, clearSession])
 
   if (token === null) return <Content>
     <h1>{t('heading')}</h1>
@@ -80,6 +84,7 @@ const EventManager = () => {
   }
 
   const duplicate = async (event: EventResponse) => {
+    if (!token) return
     setBusy(true)
     setError('')
     try {
@@ -87,11 +92,12 @@ const EventManager = () => {
       const copy = await createEvent({
         name, times: event.times, timezone: event.timezone, slot_size: event.slot_size,
         groups: event.groups?.map(({ name }) => ({ name })),
-      })
+      }, token)
       setEvents(events => [copy, ...(events ?? [])])
       setMessage(t('duplicated', { name: copy.name }))
-    } catch {
-      setError(t('duplicate_error'))
+    } catch (e) {
+      if (e instanceof Response && e.status === 401) clearSession()
+      else setError(t('duplicate_error'))
     } finally {
       setBusy(false)
     }
@@ -121,7 +127,7 @@ const EventManager = () => {
         {events && <Button onClick={() => setCreating(value => !value)}>
           {t(creating ? 'cancel' : 'create')}
         </Button>}
-        {creating && <CreateForm noRedirect onCreated={event => {
+        {creating && token && <CreateForm token={token} onExpired={clearSession} onCreated={event => {
           setEvents(events => [event, ...(events ?? [])])
           setCreating(false)
           setMessage(t('created', { name: event.name }))
@@ -157,25 +163,36 @@ const EventManager = () => {
                 }
               }}>{t('copy')}</Button>
               <Button isSmall isSecondary disabled={busy} onClick={() => duplicate(event)}>{t('duplicate')}</Button>
+              <Button isSmall isSecondary disabled={busy} aria-expanded={resultsId === event.id} onClick={() => {
+                setEditId('')
+                setDeleteId('')
+                setRespondentsId('')
+                setFinalChoiceId('')
+                setResultsId(id => id === event.id ? '' : event.id)
+              }}>{t('results')}</Button>
               <Button isSmall isSecondary disabled={busy} aria-expanded={respondentsId === event.id} onClick={() => {
+                setResultsId('')
                 setEditId('')
                 setDeleteId('')
                 setFinalChoiceId('')
                 setRespondentsId(id => id === event.id ? '' : event.id)
               }}>{t('respondents')}</Button>
               <Button isSmall isSecondary disabled={busy || editId === event.id} onClick={() => {
+                setResultsId('')
                 setDeleteId('')
                 setRespondentsId('')
                 setFinalChoiceId('')
                 setEditId(event.id)
               }}>{t('edit')}</Button>
               {event.shared_availability_available && <Button isSmall isSecondary disabled={busy || finalChoiceId === event.id} onClick={() => {
+                setResultsId('')
                 setEditId('')
                 setRespondentsId('')
                 setDeleteId('')
                 setFinalChoiceId(event.id)
               }}>{t('final_choice')}</Button>}
               <Button isSmall isSecondary disabled={busy || deleteId === event.id} onClick={() => {
+                setResultsId('')
                 setEditId('')
                 setRespondentsId('')
                 setFinalChoiceId('')
@@ -206,6 +223,7 @@ const EventManager = () => {
             }}
           />}
           {token && respondentsId === event.id && <Respondents id={event.id} token={token} onExpired={clearSession} />}
+          {token && resultsId === event.id && <EventAvailabilities event={event} adminToken={token} onAdminExpired={clearSession} />}
           {deleteId === event.id && <div className={styles.confirm}>
             <p>{t('delete_confirm', { name: event.name })}</p>
             <div className={styles.actions}>

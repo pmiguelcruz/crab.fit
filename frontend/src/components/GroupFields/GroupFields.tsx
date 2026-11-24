@@ -23,7 +23,6 @@ const GroupFields = ({ value, onChange }: Props) => {
 
   return <fieldset className={styles.fields}>
     <legend>{t('teams.optional')}</legend>
-    {value.length > 0 && <p>{t('teams.configure')}</p>}
     {value.map((group, index) => <div className={styles.row} key={group.id ?? index}>
       <TextField
         name={`${prefix}-group-${index}`}

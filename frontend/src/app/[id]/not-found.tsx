@@ -5,6 +5,7 @@ import { useEffect } from 'react'
 import Content from '/src/components/Content/Content'
 import { useTranslation } from '/src/i18n/client'
 import useRecentsStore from '/src/stores/recentsStore'
+import { forgetVisitedEvents } from '/src/stores/visitedEvents'
 
 import styles from './page.module.scss'
 
@@ -15,7 +16,11 @@ const NotFound = () => {
   const removeRecent = useRecentsStore(state => state.removeRecent)
   useEffect(() => {
     // Note: Next.js doesn't expose path params to the 404 page
-    removeRecent(window.location.pathname.replace('/', ''))
+    const id = window.location.pathname.split('/')[1]
+    if (id) {
+      removeRecent(id)
+      forgetVisitedEvents([id])
+    }
   }, [removeRecent])
 
   return <Content>

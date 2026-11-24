@@ -33,7 +33,7 @@ docker build --build-arg STORAGE_ADAPTOR=sql-adaptor -t crabfit-api:sql .
 ```
 
 Provide `FRONTEND_URL` and the selected adaptor's environment variables when
-starting the container. Set `ADMIN_PIN` to enable event management.
+starting the container. Set `ADMIN_PIN_KEY` to enable event management.
 
 ### Adding an adaptor
 
@@ -47,18 +47,24 @@ In release mode, a `FRONTEND_URL` environment variable is required to correctly 
 
 ### Cleanup task
 
-By default, anyone can run the cleanup task at `/tasks/cleanup`. This is usually not an issue, as it's based on when the events were last visited, and not when it's run, but if you'd prefer to restrict runs of the cleanup task (as it can be intensive), set a `CRON_KEY` environment variable in `.env`. This will require sending an `X-Cron-Key` header to the route with a value that matches `CRON_KEY`, or the route will return a 401 Unauthorized error.
+The cleanup task at `/tasks/cleanup` requires an admin session or a matching
+`X-Cron-Key` header when the API has a `CRON_KEY` configured.
 
 ### Event management and participant sign-in
 
-Set `ADMIN_PIN` to four digits in the API environment (or in the ignored
-`api/.env` during development). Open **About → Admin interface** on the
-frontend to sign in. Admin sessions expire after eight hours or an API restart.
-The API limits failed admin PIN attempts to five in a 15-minute window.
+This fork's admin PIN is sealed with AES-256-GCM in `src/admin_pin.sealed`.
+Supply the matching `ADMIN_PIN_KEY` as a 32-byte base64url value in the private
+API environment or in git-ignored `api/.env` during development. Keep that key
+outside the repository and the frontend environment. Admin sign-in is disabled
+when the key is absent. Open **About → Admin interface** to sign in.
+Admin sessions expire after eight hours or an API restart. The API limits
+failed PIN attempts to five in a 15-minute window.
 
 Management lists events in the configured store, including events created
 before this update. Renaming or moving dates preserves the event URL and
-responses on overlapping slots. The availability grid displays responses only
+responses on overlapping slots. Creation, the full event list, edits, and
+deletion all require an admin session. New event links use random identifiers.
+The availability grid displays responses only
 on the current schedule. Duplicating an event gives its schedule a new
 link. An admin can remove individual participants or delete the event and
 all its responses. A signed-in participant may also remove their own response.
@@ -70,7 +76,10 @@ availability and its `submitted_at` UTC timestamp for the browser receipt.
 Use `tentative` for a separate list of tentative choices. Each choice can
 appear in only one list. Omitting `tentative` keeps tentative choices that
 remain valid and do not overlap the new confirmed choices.
-Event passwords remain optional, with existing passwords required at sign-in.
+New participant entries require a password. Existing password-protected
+entries use their original passwords. Older entries saved without a password
+remain available to admins, who can remove them if a participant needs to
+register again with the same name.
 Sessions are held by the API process. If running multiple API instances,
 route a session's requests to the same instance.
 
@@ -86,14 +95,15 @@ it out of the array. Removing a group preserves its participants' choices.
 ### Shared participant emails
 
 Participants can include `shared_email` in a signed-in availability submission.
-This publishes the address for that poll. Omit the field to keep the previous
+This shares the address with event admins. Omit the field to keep the previous
 choice or send `null` to stop sharing. `GET /event/{id}/emails` lists the
-addresses that participants chose to share, with duplicates removed. Ordinary
+addresses that participants chose to share, with duplicates removed, and
+requires an admin session. Ordinary
 availability results and receipts exclude email addresses.
 
 ### Vote notifications
 
-Set these variables to offer email subscriptions on poll pages:
+Set these variables to offer email subscriptions in the admin results panel:
 
 | Variable | Value |
 | -------- | ----- |
@@ -102,8 +112,8 @@ Set these variables to offer email subscriptions on poll pages:
 | `NOTIFICATION_DB` | A private, writable SQLite file on persistent storage for subscriptions and queued mail. Use one notification-enabled API instance per file. |
 | `FRONTEND_URL` | The browser-facing frontend origin used in confirmation and unsubscribe links. |
 
-Notifications are disabled when `NOTIFICATION_SMTP_URL` is absent. Visitors
-confirm their address using a one-time link. They can request updates when
+Notifications are disabled when `NOTIFICATION_SMTP_URL` is absent. Recipients
+confirm their address using a one-time link. Admins can request updates when
 someone changes a vote, or a one-time update when a response or confirmed
 attendance target is reached. Pending updates can be grouped into one
 email. SMTP failures are retried, and each email includes a stop link.

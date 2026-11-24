@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import { SubmitHandler, useForm } from 'react-hook-form'
 
 import Button from '/src/components/Button/Button'
@@ -35,15 +35,9 @@ const Login = ({ eventId, user, disabled, onChange }: LoginProps) => {
   const [error, setError] = useState<React.ReactNode>()
   const [isLoading, setIsLoading] = useState(false)
 
-  const focusName = useCallback(() => setFocus('username'), [setFocus])
-  useEffect(() => {
-    document.addEventListener('focusName', focusName)
-    return () => document.removeEventListener('focusName', focusName)
-  }, [])
-
   const onSubmit: SubmitHandler<typeof defaultValues> = async ({ username, password }) => {
     if (username.trim().length === 0) {
-      focusName()
+      setFocus('username')
       return setError(t('form.errors.name_required'))
     }
 
@@ -53,12 +47,12 @@ const Login = ({ eventId, user, disabled, onChange }: LoginProps) => {
     try {
       if (!eventId) throw 'Event ID not set'
 
-      const resUser = await getPerson(eventId, username, password || undefined)
+      const resUser = await getPerson(eventId, username.trim(), password)
       onChange(resUser)
       reset()
     } catch (e) {
       if (e && typeof e === 'object' && 'status' in e && e.status === 401) {
-        setError(t('form.errors.password_incorrect'))
+        setError(t('form.errors.sign_in_failed'))
         setValue('password', '')
       } else {
         setError(t('form.errors.unknown'))
@@ -72,7 +66,6 @@ const Login = ({ eventId, user, disabled, onChange }: LoginProps) => {
     <h2 style={{ margin: 0 }}>{t('form.signed_in', { name: user.name })}</h2>
     <Button isSmall disabled={disabled} onClick={() => onChange(undefined)}>{t('form.logout_button')}</Button>
   </div> : <>
-    <h2>{t('form.signed_out')}</h2>
     <form className={styles.form} onSubmit={handleSubmit(onSubmit)}>
       <TextField
         label={t('form.name')}
@@ -85,10 +78,11 @@ const Login = ({ eventId, user, disabled, onChange }: LoginProps) => {
       />
 
       <TextField
-        label={t('form.password')}
+        label={t('form.password_required')}
         type="password"
         autoComplete="current-password"
         isInline
+        required
         disabled={!eventId}
         {...register('password')}
       />
@@ -100,7 +94,6 @@ const Login = ({ eventId, user, disabled, onChange }: LoginProps) => {
       >{t('form.button')}</Button>
     </form>
     <Error onClose={() => setError(undefined)}>{error}</Error>
-    <p className={styles.info}>{t('form.info')}</p>
   </>
 }
 

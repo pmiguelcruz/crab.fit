@@ -15,6 +15,7 @@ use crate::{
     errors::ApiError,
     notifications::VoteProgress,
     payloads::{ApiResult, PersonInput, PersonLogin, PersonResponse, Submission},
+    routes::admin::{admin_token, BearerHeader},
     sessions::{Session, PARTICIPANT_TTL},
     ApiState, State,
 };
@@ -27,17 +28,27 @@ use crate::{
     ),
     responses(
         (status = 200, description = "Ok", body = [PersonResponse]),
+        (status = 401, description = "Admin session required"),
         (status = 404, description = "Event not found"),
         (status = 429, description = "Too many requests"),
     ),
+    security(("admin-session" = [])),
     tag = "person",
 )]
 /// Get availabilities for an event
 pub async fn get_people<A: Adaptor>(
     extract::State(state): State<A>,
     Path(event_id): Path<String>,
-) -> ApiResult<Vec<PersonResponse>, A> {
+    bearer: BearerHeader,
+) -> Result<
+    (
+        [(header::HeaderName, &'static str); 1],
+        Json<Vec<PersonResponse>>,
+    ),
+    ApiError<A>,
+> {
     let state = state.lock().await;
+    admin_token(&state.sessions, &bearer)?;
 
     let event = state
         .adaptor
@@ -48,16 +59,19 @@ pub async fn get_people<A: Adaptor>(
     let slots = available_slots(&event);
     let (people, _) = read_people(&state, &event, &slots).await?;
 
-    Ok(Json(
-        people
-            .into_iter()
-            .map(|person| active_response(person, &slots, &event.groups))
-            .filter(|person| {
-                !person.availability.is_empty()
-                    || !person.tentative.is_empty()
-                    || person.group_id.is_some()
-            })
-            .collect(),
+    Ok((
+        [(header::CACHE_CONTROL, "private, no-store")],
+        Json(
+            people
+                .into_iter()
+                .map(|person| active_response(person, &slots, &event.groups))
+                .filter(|person| {
+                    !person.availability.is_empty()
+                        || !person.tentative.is_empty()
+                        || person.group_id.is_some()
+                })
+                .collect(),
+        ),
     ))
 }
 
@@ -67,16 +81,20 @@ pub async fn get_people<A: Adaptor>(
     params(("event_id", description = "The ID of the event")),
     responses(
         (status = 200, description = "Addresses participants chose to share for this event", body = [String]),
+        (status = 401, description = "Admin session required"),
         (status = 404, description = "Event not found"),
         (status = 429, description = "Too many requests"),
     ),
+    security(("admin-session" = [])),
     tag = "person",
 )]
 pub async fn get_shared_emails<A: Adaptor>(
     extract::State(state): State<A>,
     Path(event_id): Path<String>,
+    bearer: BearerHeader,
 ) -> Result<([(header::HeaderName, &'static str); 1], Json<Vec<String>>), ApiError<A>> {
     let state = state.lock().await;
+    admin_token(&state.sessions, &bearer)?;
     let (people, _) = if state.profiles.is_some() {
         let event = state
             .adaptor
@@ -111,7 +129,7 @@ pub async fn get_shared_emails<A: Adaptor>(
         ("event_id", description = "The ID of the event"),
         ("person_name", description = "The name of the person"),
     ),
-    security((), ("password" = [])),
+    security(("password" = [])),
     responses(
         (status = 200, description = "Ok", body = PersonLogin),
         (status = 401, description = "Incorrect password"),
@@ -129,13 +147,13 @@ pub async fn get_person<A: Adaptor>(
     bearer: Option<TypedHeader<Authorization<Bearer>>>,
 ) -> Result<([(header::HeaderName, &'static str); 1], Json<PersonLogin>), ApiError<A>> {
     let mut state = state.lock().await;
+    let password = parse_password(bearer).ok_or(ApiError::NotAuthorized)?;
     let adaptor = &state.adaptor;
     let event = adaptor
         .get_event(event_id.clone())
         .await
         .map_err(ApiError::AdaptorError)?
         .ok_or(ApiError::NotFound)?;
-    let password = parse_password(bearer);
     let existing_people = adaptor
         .get_people(event_id.clone())
         .await
@@ -146,7 +164,7 @@ pub async fn get_person<A: Adaptor>(
         .into_iter()
         .find(|person| person.name.to_lowercase() == person_name.to_lowercase())
     {
-        Some(person) if verify_password(&person, password.clone()) => person,
+        Some(person) if verify_password(&person, &password) => person,
         Some(_) => return Err(ApiError::NotAuthorized),
         None => {
             if person_name.trim().is_empty()
@@ -155,10 +173,11 @@ pub async fn get_person<A: Adaptor>(
             {
                 return Err(ApiError::InvalidInput);
             }
-            let password_hash = password
-                .map(|raw| bcrypt::hash(raw, 10))
-                .transpose()
-                .map_err(|_| ApiError::InvalidInput)?;
+            if password.len() > 72 {
+                return Err(ApiError::InvalidInput);
+            }
+            let password_hash =
+                Some(bcrypt::hash(password, 10).map_err(|_| ApiError::InvalidInput)?);
             let person = adaptor
                 .upsert_person(
                     event_id.clone(),
@@ -556,22 +575,15 @@ fn active_response(
     response
 }
 
-pub fn parse_password(bearer: Option<TypedHeader<Authorization<Bearer>>>) -> Option<String> {
-    bearer.map(|TypedHeader(Authorization(b))| {
-        String::from_utf8(
-            general_purpose::STANDARD
-                .decode(b.token().trim())
-                .unwrap_or(vec![]),
-        )
-        .unwrap_or("".to_owned())
-    })
+fn parse_password(bearer: BearerHeader) -> Option<String> {
+    let token = bearer?.0.token().to_owned();
+    let password = String::from_utf8(general_purpose::STANDARD.decode(token).ok()?).ok()?;
+    (!password.is_empty()).then_some(password)
 }
 
-pub fn verify_password(person: &Person, raw: Option<String>) -> bool {
-    match &person.password_hash {
-        Some(hash) => bcrypt::verify(raw.unwrap_or("".to_owned()), hash).unwrap_or(false),
-        // Specifically allow a user who doesn't have a password
-        // set to log in with or without any password input
-        None => true,
-    }
+fn verify_password(person: &Person, raw: &str) -> bool {
+    person
+        .password_hash
+        .as_ref()
+        .is_some_and(|hash| bcrypt::verify(raw, hash).unwrap_or(false))
 }

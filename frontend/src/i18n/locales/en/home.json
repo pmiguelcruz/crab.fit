@@ -1,7 +1,20 @@
 {
   "create": "CREATE A",
   "recently_visited": "Recently visited",
+  "event_history": {
+    "title": "Your events",
+    "empty": "Your event list is empty. Open a shared event link to mark when you’re free. The event will show up here the next time you visit in this browser.",
+    "loading": "Loading events…",
+    "unavailable": "Some events could not be loaded."
+  },
   "form": {
+    "labels": {
+      "title": "Title",
+      "dates": "Dates",
+      "slot_size": "Time slots",
+      "times": "Times",
+      "timezone": "Time zone"
+    },
     "name": {
       "label": "Give your event a name!",
       "sublabel": "Or leave blank to generate one"

@@ -5,6 +5,7 @@ use std::{
 
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use rand::{rngs::OsRng, Rng};
+use ring::aead::{Aad, LessSafeKey, Nonce, UnboundKey, AES_256_GCM};
 
 pub const ADMIN_TTL: Duration = Duration::from_secs(8 * 60 * 60);
 pub const PARTICIPANT_TTL: Duration = Duration::from_secs(60 * 60);
@@ -54,19 +55,47 @@ impl Sessions {
 }
 
 pub struct AdminPin {
-    pin: Option<String>,
+    pin: Option<[u8; 4]>,
     attempts: u8,
     resets_at: Instant,
 }
 
 impl AdminPin {
-    pub fn new(pin: Option<String>) -> Self {
-        if let Some(pin) = &pin {
-            assert!(
-                pin.len() == 4 && pin.bytes().all(|byte| byte.is_ascii_digit()),
-                "ADMIN_PIN must be four digits"
-            );
-        }
+    pub fn load(key: Option<&str>) -> Result<Self, &'static str> {
+        let pin = if let Some(key) = key {
+            let key = URL_SAFE_NO_PAD
+                .decode(key)
+                .map_err(|_| "Invalid ADMIN_PIN_KEY encoding")?;
+            let key = UnboundKey::new(&AES_256_GCM, &key)
+                .map_err(|_| "ADMIN_PIN_KEY must decode to 32 bytes")?;
+            let mut sealed = URL_SAFE_NO_PAD
+                .decode(include_str!("admin_pin.sealed").trim())
+                .map_err(|_| "Invalid encrypted admin PIN encoding")?;
+            let nonce = Nonce::try_assume_unique_for_key(
+                sealed.get(..12).ok_or("Missing admin PIN nonce")?,
+            )
+            .map_err(|_| "Invalid admin PIN nonce")?;
+            let plaintext = LessSafeKey::new(key)
+                .open_in_place(
+                    nonce,
+                    Aad::from(b"crab-fit:admin-pin:v1"),
+                    &mut sealed[12..],
+                )
+                .map_err(|_| "Could not decrypt admin PIN")?;
+            let pin: [u8; 4] = (&*plaintext)
+                .try_into()
+                .map_err(|_| "Invalid admin PIN length")?;
+            if !pin.iter().all(u8::is_ascii_digit) {
+                return Err("Invalid admin PIN");
+            }
+            Some(pin)
+        } else {
+            None
+        };
+        Ok(Self::new(pin))
+    }
+
+    fn new(pin: Option<[u8; 4]>) -> Self {
         Self {
             pin,
             attempts: 0,
@@ -77,7 +106,7 @@ impl AdminPin {
     pub fn verify(&mut self, guess: &str) -> Result<(), axum::http::StatusCode> {
         use axum::http::StatusCode;
 
-        let pin = self.pin.as_deref().ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        let pin = self.pin.as_ref().ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
         let now = Instant::now();
         if self.resets_at <= now {
             self.attempts = 0;
@@ -86,7 +115,7 @@ impl AdminPin {
         if self.attempts >= 5 {
             return Err(StatusCode::TOO_MANY_REQUESTS);
         }
-        if pin == guess {
+        if ring::constant_time::verify_slices_are_equal(pin, guess.as_bytes()).is_ok() {
             self.attempts = 0;
             self.resets_at = now;
             return Ok(());
@@ -104,7 +133,7 @@ mod tests {
 
     #[test]
     fn admin_pin_locks_after_five_bad_guesses() {
-        let mut pin = AdminPin::new(Some("7315".to_owned()));
+        let mut pin = AdminPin::new(Some(*b"7315"));
         assert!(pin.verify("7315").is_ok());
         for _ in 0..5 {
             assert_eq!(pin.verify("4620"), Err(StatusCode::UNAUTHORIZED));

@@ -42,7 +42,6 @@ const FinalChoiceEditor = ({ event, token, onSaved, onCancel, onExpired }: Props
   return <form onSubmit={save}>
     <fieldset className={styles.editor} disabled={saving}>
       <legend>{t('final_choice')}</legend>
-      <p>{t('final_choice_help')}</p>
       <SelectField
         label={t('final_choice_label')}
         name={`final-choice-${event.id}`}

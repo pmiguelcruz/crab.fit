@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { SubmitHandler, useForm, useWatch } from 'react-hook-form'
-import { useRouter } from 'next/navigation'
 import { Temporal } from '@js-temporal/polyfill'
 
 import Button from '/src/components/Button/Button'
@@ -15,11 +14,9 @@ import TimeRangeField from '/src/components/TimeRangeField/TimeRangeField'
 import { createEvent, EventResponse, GroupEdit } from '/src/config/api'
 import { useTranslation } from '/src/i18n/client'
 import timezones from '/src/res/timezones.json'
-import useRecentsStore from '/src/stores/recentsStore'
 import { referenceWeekStart, serializeTime } from '/src/utils'
 import { slotMinutes, SlotSize, slotSizes } from '/src/utils/slotSize'
 
-import EventInfo from './components/EventInfo/EventInfo'
 import ScheduleWindows, { hoursInWindow, TimeWindow } from './components/ScheduleWindows'
 import styles from './CreateForm.module.scss'
 
@@ -39,16 +36,14 @@ const defaultValues: Fields = {
 }
 
 interface CreateFormProps {
-  noRedirect?: boolean
-  onCreated?: (event: EventResponse) => void
+  token: string
+  onCreated: (event: EventResponse) => void
+  onExpired: () => void
 }
 
-const CreateForm = ({ noRedirect, onCreated }: CreateFormProps) => {
+const CreateForm = ({ token, onCreated, onExpired }: CreateFormProps) => {
   const { t } = useTranslation('home')
   const { t: eventText } = useTranslation('event')
-  const { push } = useRouter()
-
-  const addRecent = useRecentsStore(state => state.addRecent)
 
   const {
     register,
@@ -65,7 +60,6 @@ const CreateForm = ({ noRedirect, onCreated }: CreateFormProps) => {
   const [groups, setGroups] = useState<GroupEdit[]>([])
 
   const [isLoading, setIsLoading] = useState(false)
-  const [createdEvent, setCreatedEvent] = useState<EventResponse>()
   const [error, setError] = useState<React.ReactNode>()
 
   const onSubmit: SubmitHandler<Fields> = async values => {
@@ -107,54 +101,35 @@ const CreateForm = ({ noRedirect, onCreated }: CreateFormProps) => {
       }
       if (!times.length) return setError(t('form.errors.no_times'))
 
-      const newEvent = await createEvent({ name, times, timezone, slot_size: slotSize, groups }).catch(e => {
-        console.error(e)
-        throw new Error('Failed to create event')
-      })
-
-      if (onCreated) {
-        onCreated(newEvent)
-      } else if (noRedirect) {
-        // Show event link
-        setCreatedEvent(newEvent)
-        addRecent({
-          id: newEvent.id,
-          name: newEvent.name,
-          created_at: newEvent.created_at,
-        })
-      } else {
-        // Navigate to the new event
-        push(`/${newEvent.id}`)
-      }
+      onCreated(await createEvent({ name, times, timezone, slot_size: slotSize, groups }, token))
     } catch (e) {
-      setError(t('form.errors.unknown'))
-      console.error(e)
+      if (e instanceof Response && e.status === 401) onExpired()
+      else setError(t('form.errors.unknown'))
     } finally {
       setIsLoading(false)
     }
   }
 
-  return createdEvent ? <EventInfo event={createdEvent} /> : <form
-    style={{ marginBlockEnd: noRedirect ? 30 : 60 }}
+  return <form
+    style={{ marginBlockEnd: 30 }}
     onSubmit={handleSubmit(onSubmit)}
     id="create"
   >
     <TextField
-      label={t('form.name.label')}
-      description={t('form.name.sublabel')}
+      label={t('form.labels.title')}
       type="text"
+      maxLength={255}
       {...register('name')}
     />
 
     <CalendarField
-      label={t('form.dates.label')}
-      description={t('form.dates.sublabel')}
+      label={t('form.labels.dates')}
       control={control}
       name="dates"
     />
 
     <SelectField
-      label={t('form.slot_size.label')}
+      label={t('form.labels.slot_size')}
       name="slot-size"
       value={slotSize}
       options={Object.fromEntries(slotSizes.map(size => [size, t(`form.slot_size.${size}`)]))}
@@ -170,8 +145,7 @@ const CreateForm = ({ noRedirect, onCreated }: CreateFormProps) => {
         onChange={(date, ranges) => setWindows(current => ({ ...current, [date]: ranges }))}
         initialWindow={{ ...time, start: time.start % 24 }}
       /> : <TimeRangeField
-        label={t('form.times.label')}
-        description={t('form.times.sublabel')}
+        label={t('form.labels.times')}
         control={control}
         name="time"
       />}
@@ -180,7 +154,7 @@ const CreateForm = ({ noRedirect, onCreated }: CreateFormProps) => {
       </Button>
 
       <SelectField
-        label={t('form.timezone.label')}
+        label={t('form.labels.timezone')}
         options={timezones}
         required
         {...register('timezone')}
@@ -196,7 +170,7 @@ const CreateForm = ({ noRedirect, onCreated }: CreateFormProps) => {
         type="submit"
         isLoading={isLoading}
         disabled={isLoading}
-        style={noRedirect ? { width: '100%' } : undefined}
+        style={{ width: '100%' }}
       >{t('form.button')}</Button>
     </div>
   </form>

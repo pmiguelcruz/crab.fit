@@ -8,7 +8,7 @@ import { useTranslation } from '/src/i18n/client'
 
 import styles from './page.module.scss'
 
-const SharedEmails = ({ eventId }: { eventId: string }) => {
+const SharedEmails = ({ eventId, adminToken }: { eventId: string; adminToken: string }) => {
   const { t } = useTranslation('event')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
@@ -19,7 +19,7 @@ const SharedEmails = ({ eventId }: { eventId: string }) => {
     setMessage('')
     setManual('')
     try {
-      const addresses = await getSharedEmails(eventId)
+      const addresses = await getSharedEmails(eventId, adminToken)
       if (!addresses.length) {
         setMessage(t('email.empty'))
         return
