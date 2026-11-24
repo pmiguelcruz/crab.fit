@@ -1,4 +1,4 @@
-import { Suspense } from 'react'
+import { cache, Suspense } from 'react'
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { Temporal } from '@js-temporal/polyfill'
@@ -16,9 +16,12 @@ interface PageProps {
   params: { id: string }
 }
 
+// The title and page share one deadline and the same event response.
+const readEvent = cache(getEvent)
+
 export const generateMetadata = async ({ params }: PageProps): Promise<Metadata> => {
   try {
-    return { title: (await getEvent(params.id)).name }
+    return { title: (await readEvent(params.id)).name }
   } catch (error) {
     const { t } = await useTranslation('event')
     return { title: error instanceof Response && error.status === 404 ? t('error.title') : t('error.unavailable_title') }
@@ -26,7 +29,7 @@ export const generateMetadata = async ({ params }: PageProps): Promise<Metadata>
 }
 
 const Page = async ({ params }: PageProps) => {
-  const event = await getEvent(params.id).catch(error => {
+  const event = await readEvent(params.id).catch(error => {
     if (error instanceof Response && error.status === 404) return null
     throw error ?? new Error('Crab Fit API unavailable')
   })

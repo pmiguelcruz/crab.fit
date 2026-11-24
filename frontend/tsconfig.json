@@ -31,7 +31,7 @@
         "name": "typescript-plugin-css-modules"
       }
     ],
-    "types": ["google.accounts", "gapi", "gapi.calendar"]
+    "types": ["google.accounts", "gapi", "gapi.calendar", "react/next"]
   },
   "include": [
     "next-env.d.ts",

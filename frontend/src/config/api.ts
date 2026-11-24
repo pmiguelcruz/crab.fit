@@ -69,16 +69,25 @@ export const StatsResponse = z.object({
 })
 export type StatsResponse = z.infer<typeof StatsResponse>
 
+const apiReadTimeout = 15000
+
 const get = async <S extends z.Schema>(url: string, schema: S, auth?: string, nextOptions?: NextFetchRequestConfig): Promise<ReturnType<S['parse']>> => {
-  const res = await fetch(new URL(url, API_BASE), {
-    headers: {
-      ...auth && { Authorization: `Bearer ${auth}` },
-    },
-    cache: nextOptions ? undefined : 'no-store',
-    next: nextOptions,
-  })
-  if (!res.ok) throw res
-  return schema.parse(await res.json())
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), apiReadTimeout)
+  try {
+    const res = await fetch(new URL(url, API_BASE), {
+      headers: {
+        ...auth && { Authorization: `Bearer ${auth}` },
+      },
+      cache: nextOptions ? undefined : 'no-store',
+      next: nextOptions,
+      signal: controller.signal,
+    })
+    if (!res.ok) throw res
+    return schema.parse(await res.json())
+  } finally {
+    clearTimeout(timeout)
+  }
 }
 
 const post = async <S extends z.Schema>(url: string, schema: S, input: unknown, auth?: string, method = 'POST'): Promise<ReturnType<S['parse']>> => {
