@@ -17,7 +17,7 @@ Builds:
       - yes
     output: app/build/outputs/apk/release/app-release-unsigned.apk
 
-AutoUpdateMode: None
-UpdateCheckMode: None
+AutoUpdateMode: Version android-v%v
+UpdateCheckMode: Tags ^android-v[0-9]+(\.[0-9]+)*$
 CurrentVersion: '1.0'
 CurrentVersionCode: 1

@@ -25,9 +25,12 @@ APK at `app/build/outputs/apk/release/app-release-unsigned.apk` is unsigned.
 ## F-Droid packaging
 
 The [F-Droid recipe](./fdroid/io.github.pmiguelcruz.crabfit.yml) pins the
-source revision for version 1.0. The repository's
+source revision for Android release `android-v1.0`. The repository's
 [Fastlane metadata](../fastlane/metadata/android/en-US) supplies the English
-listing text, icon, and screenshots.
+listing text, icon, and screenshots. For a new Android release, update
+`versionName` and increment `versionCode` in `app/build.gradle`, add the
+matching Fastlane changelog, and tag the release commit as
+`android-v<versionName>` so F-Droid can find it.
 
 Copy the recipe into the `metadata` directory of a local fdroiddata checkout
 to run F-Droid's checks.
