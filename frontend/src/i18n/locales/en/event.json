@@ -78,6 +78,18 @@
     "inside": "Within awake hours in all zones",
     "outside": "Outside awake hours in at least one zone"
   },
+  "tentative": {
+    "mode": "Mark availability as",
+    "firm": "Available",
+    "label": "Tentative",
+    "unmarked": "Unmarked",
+    "count_one": "{{count}} tentative",
+    "count_other": "{{count}} tentative",
+    "person": "{{name}} (tentative)",
+    "people": "Tentative: {{people}}",
+    "times_help": "Dotted slots have tentative responses. Tentative responses break ties between slots with the same number of available people.",
+    "days_help": "Numbers after + are tentative responses. Tentative responses break ties between dates with the same number of available people."
+  },
   "days": {
     "calendar": "Poll dates",
     "month": "Month",

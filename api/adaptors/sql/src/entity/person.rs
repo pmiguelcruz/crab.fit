@@ -10,6 +10,7 @@ pub struct Model {
     pub password_hash: Option<String>,
     pub created_at: DateTime,
     pub availability: Json,
+    pub tentative: Option<Json>,
     #[sea_orm(primary_key, auto_increment = false)]
     pub event_id: String,
 }

@@ -62,6 +62,8 @@ impl From<Stats> for StatsResponse {
 pub struct PersonResponse {
     pub name: String,
     pub availability: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub tentative: Vec<String>,
     pub created_at: i64,
 }
 
@@ -70,6 +72,7 @@ impl From<Person> for PersonResponse {
         Self {
             name: value.name,
             availability: value.availability,
+            tentative: value.tentative,
             created_at: value.created_at.timestamp(),
         }
     }
@@ -78,6 +81,7 @@ impl From<Person> for PersonResponse {
 #[derive(Deserialize, ToSchema)]
 pub struct PersonInput {
     pub availability: Vec<String>,
+    pub tentative: Option<Vec<String>>,
 }
 
 #[derive(Deserialize)]

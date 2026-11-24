@@ -40,6 +40,7 @@ const AvailabilityViewer = ({ times, people, datesOnly, table }: AvailabilityVie
     available: string
     date: string
     people: string[]
+    tentative: string[]
     overlapping?: boolean
   }>()
   const { refs, floatingStyles } = useFloating({
@@ -48,9 +49,11 @@ const AvailabilityViewer = ({ times, people, datesOnly, table }: AvailabilityVie
   })
 
   // Calculate availabilities
-  const { availabilities, min, max } = useMemo(() =>
+  const { availabilities, min, max, bestTentative } = useMemo(() =>
     calculateAvailability(times, people.filter(p => filteredPeople.includes(p.name))),
   [times, filteredPeople, people])
+  const bySlot = useMemo(() => new Map(availabilities.map(slot => [slot.date, slot])), [availabilities])
+  const anyTentative = people.some(person => !!person.tentative?.length)
 
   // Create the colour palette
   const palette = usePalette(Math.max((max - min) + 1, 2))
@@ -81,10 +84,12 @@ const AvailabilityViewer = ({ times, people, datesOnly, table }: AvailabilityVie
             title={t('greyed_times')}
           />
 
-          let peopleHere = availabilities.find(a => a.date === cell.serialized)?.people ?? []
-          if (tempFocus) {
-            peopleHere = peopleHere.filter(p => p === tempFocus)
-          }
+          const result = bySlot.get(cell.serialized)
+          const peopleHere = result?.people.filter(person => !tempFocus || person === tempFocus) ?? []
+          const tentativeHere = result?.tentative.filter(person => !tempFocus || person === tempFocus) ?? []
+          const visible = focusCount === undefined || focusCount === peopleHere.length
+          const isBest = (peopleHere.length > 0 || tentativeHere.length > 0)
+            && (tempFocus || (peopleHere.length === max && tentativeHere.length === bestTentative))
           const color = palette[(tempFocus && peopleHere.length) ? Math.min(max, palette.length - 1) : Math.max(peopleHere.length - min, 0)]
 
           return <div
@@ -92,15 +97,19 @@ const AvailabilityViewer = ({ times, people, datesOnly, table }: AvailabilityVie
             className={makeClass(
               styles.time,
               styles.nonEditable,
-              (focusCount === undefined || focusCount === peopleHere.length) && highlight && (peopleHere.length === max || tempFocus) && peopleHere.length > 0 && styles.highlight,
+              visible && highlight && isBest && styles.highlight,
             )}
             style={{
-              backgroundColor: (focusCount === undefined || focusCount === peopleHere.length) ? color.string : 'transparent',
+              backgroundColor: visible ? color.string : 'transparent',
               '--highlight-color': color.highlight,
               ...cell.minute !== 0 && cell.minute !== 30 && { borderTopColor: 'transparent' },
               ...cell.minute === 30 && { borderTopStyle: 'dotted' },
             } as React.CSSProperties}
-            aria-label={peopleHere.join(', ')}
+            aria-label={[
+              ...peopleHere,
+              ...(tentativeHere.length ? [`${t('tentative.label')}: ${tentativeHere.join(', ')}`] : []),
+            ].join(', ')}
+            data-tentative={visible && !!tentativeHere.length || undefined}
             data-overlap={cell.overlapping}
             onMouseEnter={e => {
               setTooltip({
@@ -108,11 +117,13 @@ const AvailabilityViewer = ({ times, people, datesOnly, table }: AvailabilityVie
                 available: `${peopleHere.length} / ${filteredPeople.length} ${t('available')}`,
                 date: cell.label,
                 people: peopleHere,
+                tentative: tentativeHere,
                 overlapping: cell.overlapping,
               })
             }}
             onClick={() => {
-              const clipboardMessage = `${t('group.clipboard_message', { date: cell.label })}:\n${peopleHere.join(', ')}`
+              let clipboardMessage = `${t('group.clipboard_message', { date: cell.label })}:\n${peopleHere.join(', ')}`
+              if (tentativeHere.length) clipboardMessage += `\n${t('tentative.label')}: ${tentativeHere.join(', ')}`
               navigator.clipboard?.writeText(clipboardMessage).catch(console.warn)
             }}
             onMouseLeave={() => setTooltip(undefined)}
@@ -121,10 +132,11 @@ const AvailabilityViewer = ({ times, people, datesOnly, table }: AvailabilityVie
       </div>
     </div> : <div className={styles.columnSpacer} />}
   </Fragment>) ?? <Skeleton isSpecificDates={times[0]?.length === 13} />, [
-    availabilities,
+    bySlot,
     table?.columns,
     highlight,
     max,
+    bestTentative,
     min,
     t,
     palette,
@@ -137,18 +149,21 @@ const AvailabilityViewer = ({ times, people, datesOnly, table }: AvailabilityVie
   if (datesOnly) {
     for (const day of availabilities) {
       const count = tempFocus ? Number(day.people.includes(tempFocus)) : day.people.length
+      const tentativeCount = tempFocus ? Number(day.tentative.includes(tempFocus)) : day.tentative.length
+      const visible = focusCount === undefined || focusCount === count
       dayStates.set(day.date, {
         count,
-        color: focusCount === undefined || focusCount === count
-          ? palette[Math.max(count - min, 0)].string
-          : undefined,
-        highlight: !!highlight && count > 0 && count === max,
+        tentativeCount,
+        color: visible ? palette[Math.max(count - min, 0)].string : undefined,
+        highlight: !!highlight && visible && (count > 0 || tentativeCount > 0)
+          && (!!tempFocus || (count === max && tentativeCount === bestTentative)),
         selected: selectedDay?.day === day.date,
       })
     }
   }
-  const selectedNames = (availabilities.find(day => day.date === selectedDay?.day)?.people ?? [])
-    .filter(name => !tempFocus || tempFocus === name)
+  const selectedResult = selectedDay && bySlot.get(selectedDay.day)
+  const selectedNames = selectedResult?.people.filter(name => !tempFocus || tempFocus === name) ?? []
+  const selectedTentative = selectedResult?.tentative.filter(name => !tempFocus || tempFocus === name) ?? []
 
   return <>
     <Content>
@@ -161,6 +176,7 @@ const AvailabilityViewer = ({ times, people, datesOnly, table }: AvailabilityVie
       />
 
       <span className={styles.info}>{t(datesOnly ? 'days.group_info' : 'group.info1')}</span>
+      {anyTentative && <span className={styles.info}>{t(datesOnly ? 'tentative.days_help' : 'tentative.times_help')}</span>}
 
       {people.length > 1 && <>
         <span className={styles.info}>{t('group.info2')}</span>
@@ -221,6 +237,7 @@ const AvailabilityViewer = ({ times, people, datesOnly, table }: AvailabilityVie
         <div role="status">
           <strong>{selectedDay.label}</strong>
           <p>{selectedNames.length ? selectedNames.join(', ') : t('days.nobody')}</p>
+          {!!selectedTentative.length && <p>{t('tentative.people', { people: selectedTentative.join(', ') })}</p>}
         </div>
       </Content>}
     </> : <div className={styles.wrapper}>
@@ -249,7 +266,8 @@ const AvailabilityViewer = ({ times, people, datesOnly, table }: AvailabilityVie
           {tooltip.overlapping !== undefined && <span>{t(tooltip.overlapping ? 'overlap.inside' : 'overlap.outside')}</span>}
           {!!filteredPeople.length && <div>
             {tooltip.people.map(person => <span key={person}>{person}</span>)}
-            {filteredPeople.filter(p => !tooltip.people.includes(p)).map(person =>
+            {tooltip.tentative.map(person => <span key={person} data-tentative>{t('tentative.person', { name: person })}</span>)}
+            {filteredPeople.filter(p => !tooltip.people.includes(p) && !tooltip.tentative.includes(p)).map(person =>
               <span key={person} data-disabled>{person}</span>
             )}
           </div>}

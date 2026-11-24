@@ -45,6 +45,17 @@
     font-weight: 700;
   }
 
+  &[data-marked="firm"] {
+    background-color: var(--primary);
+    color: #fff;
+  }
+
+  &[data-marked="tentative"] {
+    background-color: var(--surface);
+    border-style: dashed;
+    border-width: 2px;
+  }
+
   &[data-highlight="true"] {
     font-weight: 700;
     border-width: 2px;
@@ -62,4 +73,8 @@
     outline-offset: 1px;
     z-index: 1;
   }
+}
+
+.tentativeCount {
+  text-decoration: underline dotted;
 }

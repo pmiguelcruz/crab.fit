@@ -22,12 +22,22 @@ interface AvailabilityEditorProps {
   datesOnly?: boolean
   interval?: number
   value: string[]
+  tentative?: string[]
   onChange: (value: string[]) => void
+  onChangeTentative?: (value: string[]) => void
   table?: ReturnType<typeof calculateTable>
 }
 
-const AvailabilityEditor = ({ eventId, times, timezone, datesOnly, interval = 15, value = [], onChange, table }: AvailabilityEditorProps) => {
+const empty: string[] = []
+
+const AvailabilityEditor = ({ eventId, times, timezone, datesOnly, interval = 15, value = empty, tentative = empty, onChange, onChangeTentative, table }: AvailabilityEditorProps) => {
   const { t } = useTranslation('event')
+  const [markTentative, setMarkTentative] = useState(false)
+  const active = markTentative ? tentative : value
+  const setActive = markTentative && onChangeTentative ? onChangeTentative : onChange
+  const availableSet = useMemo(() => new Set(value), [value])
+  const tentativeSet = useMemo(() => new Set(tentative), [tentative])
+  const activeSet = markTentative ? tentativeSet : availableSet
 
   // Ref and state required to rerender but also access static version in callbacks
   const selectingRef = useRef<string[]>([])
@@ -50,9 +60,10 @@ const AvailabilityEditor = ({ eventId, times, timezone, datesOnly, interval = 15
   const palette = usePalette(2)
 
   // Selection control
-  const selectAll = useCallback(() => onChange(times), [onChange, times])
-  const selectNone = useCallback(() => onChange([]), [onChange])
-  const selectInvert = useCallback(() => onChange(times.filter(t => !value.includes(t))), [onChange, times, value])
+  const selectAll = useCallback(() => setActive(times), [setActive, times])
+  const selectNone = useCallback(() => setActive([]), [setActive])
+  const selectInvert = useCallback(() => setActive(times.filter(time => !activeSet.has(time))), [setActive, times, activeSet])
+  const toggle = (slot: string) => setActive(activeSet.has(slot) ? active.filter(time => time !== slot) : [...active, slot])
 
   // Selection keyboard shortcuts
   useEffect(() => {
@@ -73,6 +84,14 @@ const AvailabilityEditor = ({ eventId, times, timezone, datesOnly, interval = 15
   return <>
     <Content isCentered>
       <div>{t(datesOnly ? 'days.editor_info' : 'you.info')}</div>
+      {onChangeTentative && <div className={styles.selectionControls} role="group" aria-label={t('tentative.mode')}>
+        <Button isSmall isSecondary={markTentative} aria-pressed={!markTentative} onClick={() => setMarkTentative(false)}>
+          {t('tentative.firm')}
+        </Button>
+        <Button isSmall isSecondary={!markTentative} aria-pressed={markTentative} onClick={() => setMarkTentative(true)}>
+          {t('tentative.label')}
+        </Button>
+      </div>}
       <div className={styles.selectionControls}>
         <Button isSmall onClick={selectAll} title="Ctrl + A (⌘ A)">{t('you.select_all')}</Button>
         <Button isSmall onClick={selectNone} title="Ctrl + Shift + A (⌘ ⇧ A)">{t('you.select_none')}</Button>
@@ -106,8 +125,11 @@ const AvailabilityEditor = ({ eventId, times, timezone, datesOnly, interval = 15
 
     {datesOnly ? <DayCalendar
       days={times}
-      states={new Map(value.map(day => [day, { selected: true }]))}
-      onSelect={day => onChange(value.includes(day) ? value.filter(selected => selected !== day) : [...value, day])}
+      states={new Map(times.map(day => [day, {
+        selected: activeSet.has(day),
+        marked: availableSet.has(day) ? 'firm' : tentativeSet.has(day) ? 'tentative' : undefined,
+      }]))}
+      onSelect={toggle}
     /> : <div className={viewerStyles.wrapper}>
       <div tabIndex={0} role="region" aria-label={t('group.calendar')}>
         <div className={viewerStyles.heatmap}>
@@ -142,35 +164,43 @@ const AvailabilityEditor = ({ eventId, times, timezone, datesOnly, interval = 15
                     title={t('greyed_times')}
                   />
 
-                  const isSelected = (
-                    (!(mode.current === 'remove' && selecting.includes(cell.serialized)) && value.includes(cell.serialized))
-                    || (mode.current === 'add' && selecting.includes(cell.serialized))
-                  )
+                  const slot = cell.serialized
+                  const preview = selecting.includes(slot) ? mode.current : undefined
+                  const isSelected = preview ? preview === 'add' : activeSet.has(slot)
+                  const firm = markTentative ? preview !== 'add' && availableSet.has(slot) : isSelected
+                  const possible = markTentative ? isSelected : preview !== 'add' && tentativeSet.has(slot)
+                  const status = firm ? t('tentative.firm') : possible ? t('tentative.label') : t('tentative.unmarked')
 
-                  return <div
+                  return <button
+                    type="button"
                     key={y}
+                    aria-label={`${cell.label}, ${status}`}
+                    aria-pressed={isSelected}
                     title={cell.overlapping === undefined ? cell.label : `${cell.label} · ${t(cell.overlapping ? 'overlap.inside' : 'overlap.outside')}`}
                     data-overlap={cell.overlapping}
-                    className={makeClass(viewerStyles.time, selecting.length === 0 && viewerStyles.editable)}
+                    data-tentative={possible || undefined}
+                    className={makeClass(viewerStyles.time, styles.timeButton, selecting.length === 0 && viewerStyles.editable)}
                     style={{
                       touchAction: 'none',
-                      backgroundColor: isSelected ? palette[1].string : palette[0].string,
-                      '--hover-color': isSelected ? palette[0].highlight : palette[1].highlight,
+                      backgroundColor: firm || possible ? palette[1].string : palette[0].string,
+                      '--hover-color': firm || possible ? palette[0].highlight : palette[1].highlight,
                       ...cell.minute !== 0 && cell.minute !== 30 && { borderTopColor: 'transparent' },
                       ...cell.minute === 30 && { borderTopStyle: 'dotted' },
                     } as React.CSSProperties}
+                    onClick={e => { if (e.detail === 0) toggle(slot) }}
                     onPointerDown={e => {
+                      if (e.button !== 0) return
                       e.preventDefault()
                       startPos.current = { x, y }
-                      mode.current = value.includes(cell.serialized) ? 'remove' : 'add'
-                      setSelecting([cell.serialized])
+                      mode.current = activeSet.has(slot) ? 'remove' : 'add'
+                      setSelecting([slot])
                       e.currentTarget.releasePointerCapture(e.pointerId)
 
                       document.addEventListener('pointerup', () => {
                         if (mode.current === 'add') {
-                          onChange([...value, ...selectingRef.current])
+                          setActive([...active, ...selectingRef.current])
                         } else if (mode.current === 'remove') {
-                          onChange(value.filter(t => !selectingRef.current.includes(t)))
+                          setActive(active.filter(time => !selectingRef.current.includes(time)))
                         }
                         setSelecting([])
                         mode.current = undefined

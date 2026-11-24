@@ -236,6 +236,7 @@ mod tests {
                             password_hash: None,
                             created_at: old,
                             availability: vec!["0900-1".into()],
+                            tentative: vec![],
                         },
                     )
                     .await

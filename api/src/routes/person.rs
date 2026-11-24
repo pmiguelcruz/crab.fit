@@ -52,7 +52,7 @@ pub async fn get_people<A: Adaptor>(
         people
             .into_iter()
             .map(|person| active_response(person, &slots))
-            .filter(|person| !person.availability.is_empty())
+            .filter(|person| !person.availability.is_empty() || !person.tentative.is_empty())
             .collect(),
     ))
 }
@@ -120,6 +120,7 @@ pub async fn get_person<A: Adaptor>(
                         password_hash,
                         created_at: chrono::Utc::now(),
                         availability: vec![],
+                        tentative: vec![],
                     },
                 )
                 .await
@@ -187,7 +188,14 @@ pub async fn update_person<A: Adaptor>(
         .ok_or(ApiError::NotFound)?;
     let slots = available_slots(&event);
     let mut availability = input.availability;
-    if availability.iter().any(|slot| !slots.contains(slot)) {
+    let firm: HashSet<_> = availability.iter().cloned().collect();
+    if !firm.is_subset(&slots)
+        || input.tentative.as_ref().is_some_and(|times| {
+            times
+                .iter()
+                .any(|time| !slots.contains(time) || firm.contains(time))
+        })
+    {
         return Err(ApiError::InvalidInput);
     }
     availability.sort_unstable();
@@ -201,11 +209,16 @@ pub async fn update_person<A: Adaptor>(
         .into_iter()
         .find(|person| person.name == person_name)
         .ok_or(ApiError::NotFound)?;
+    let mut tentative = input.tentative.unwrap_or(person.tentative);
+    tentative.retain(|time| slots.contains(time) && !firm.contains(time));
+    tentative.sort_unstable();
+    tentative.dedup();
     let person = adaptor
         .upsert_person(
             event_id,
             Person {
                 availability,
+                tentative,
                 ..person
             },
         )
@@ -282,6 +295,7 @@ fn available_slots(event: &Event) -> HashSet<String> {
 fn active_response(person: Person, slots: &HashSet<String>) -> PersonResponse {
     let mut response = PersonResponse::from(person);
     response.availability.retain(|time| slots.contains(time));
+    response.tentative.retain(|time| slots.contains(time));
     response
 }
 

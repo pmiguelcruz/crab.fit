@@ -79,6 +79,7 @@ impl Adaptor for SqlAdaptor {
             password_hash: Set(person.password_hash),
             created_at: Set(person.created_at.naive_utc()),
             availability: Set(serde_json::to_value(person.availability).unwrap_or(json!([]))),
+            tentative: Set(Some(json!(person.tentative))),
             event_id: Set(event_id.clone()),
         };
 
@@ -279,6 +280,10 @@ impl From<person::Model> for Person {
             password_hash: value.password_hash,
             created_at: DateTime::<Utc>::from_utc(value.created_at, Utc),
             availability: serde_json::from_value(value.availability).unwrap_or(vec![]),
+            tentative: value
+                .tentative
+                .and_then(|times| serde_json::from_value(times).ok())
+                .unwrap_or_default(),
         }
     }
 }

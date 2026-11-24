@@ -25,6 +25,7 @@ On November 23, 2026, the upstream repository had 56 open issues. This records t
 - Buttons use a regular CSS shadow. WebKit passed poll creation, participant sign-in, submission, and receipt download. [#300](https://github.com/GRA0007/crab.fit/issues/300)
 - Timed polls can compare configurable awake hours across time zones. The overlay marks slots that fit in every selected zone and accounts for clock changes. [#294](https://github.com/GRA0007/crab.fit/issues/294)
 - Voters can import iCalendar files and shared export URLs on polls with calendar dates. Export links work directly with CORS or through an opt-in relay for trusted origins. Chromium and WebKit passed link and file import checks with local fixtures. [#245](https://github.com/GRA0007/crab.fit/issues/245)
+- Voters can mark dates or time slots as tentative, and receipts preserve that distinction. The best-slot highlight uses tentative responses only to break a tie in confirmed availability. Verified in Chromium and WebKit, including responses saved before the SQLite migration. [#307](https://github.com/GRA0007/crab.fit/issues/307)
 
 ## Code changed, with verification or coverage pending
 
@@ -38,7 +39,7 @@ On November 23, 2026, the upstream repository had 56 open issues. This records t
 
 ## Open work
 
-- Respondent groups and tentative participation. [#358](https://github.com/GRA0007/crab.fit/issues/358), [#307](https://github.com/GRA0007/crab.fit/issues/307)
+- Respondent groups. [#358](https://github.com/GRA0007/crab.fit/issues/358)
 - Vote notifications, cross-poll availability sync, and participant email lists. These need shared identities or a delivery service. [#331](https://github.com/GRA0007/crab.fit/issues/331), [#323](https://github.com/GRA0007/crab.fit/issues/323), [#308](https://github.com/GRA0007/crab.fit/issues/308), [#135](https://github.com/GRA0007/crab.fit/issues/135)
 - The external connection failure needs a reproducible case or diagnostics from that deployment. [#354](https://github.com/GRA0007/crab.fit/issues/354)
 - Esperanto translation files are absent from the upstream checkout. [#336](https://github.com/GRA0007/crab.fit/issues/336)

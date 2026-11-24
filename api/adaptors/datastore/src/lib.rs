@@ -347,7 +347,7 @@ impl FromValue for DatastoreEvent {
     }
 }
 
-#[derive(FromValue, IntoValue)]
+#[derive(IntoValue)]
 #[allow(non_snake_case)]
 struct DatastorePerson {
     name: String,
@@ -355,6 +355,40 @@ struct DatastorePerson {
     created: i64,
     eventId: String,
     availability: Vec<String>,
+    tentative: Vec<String>,
+}
+
+impl FromValue for DatastorePerson {
+    fn from_value(value: Value) -> Result<Self, ConvertError> {
+        let Value::EntityValue(mut properties) = value else {
+            return Err(ConvertError::UnexpectedPropertyType {
+                expected: "entity".into(),
+                got: value.type_name().into(),
+            });
+        };
+        let tentative = properties
+            .remove("tentative")
+            .map(Vec::from_value)
+            .transpose()?;
+        let password = match properties.remove("password") {
+            None | Some(Value::OptionValue(None)) => None,
+            Some(Value::OptionValue(Some(value))) => Some(String::from_value(*value)?),
+            Some(value) => Some(String::from_value(value)?),
+        };
+        let mut required = |name: &str| {
+            properties
+                .remove(name)
+                .ok_or_else(|| ConvertError::MissingProperty(name.into()))
+        };
+        Ok(Self {
+            name: String::from_value(required("name")?)?,
+            password,
+            created: i64::from_value(required("created")?)?,
+            eventId: String::from_value(required("eventId")?)?,
+            availability: Vec::from_value(required("availability")?)?,
+            tentative: tentative.unwrap_or_default(),
+        })
+    }
 }
 
 impl From<DatastorePerson> for Person {
@@ -364,6 +398,7 @@ impl From<DatastorePerson> for Person {
             password_hash: value.password,
             created_at: unix_to_date(value.created),
             availability: value.availability,
+            tentative: value.tentative,
         }
     }
 }
@@ -376,6 +411,7 @@ impl DatastorePerson {
             created: person.created_at.timestamp(),
             eventId: event_id,
             availability: person.availability,
+            tentative: person.tentative,
         }
     }
 }
@@ -442,6 +478,30 @@ impl From<google_cloud::error::ConvertError> for DatastoreAdaptorError {
 mod tests {
     use super::*;
     use common::SlotSize;
+
+    #[test]
+    fn reads_responses_written_before_tentative_availability_existed() {
+        let record = DatastorePerson {
+            name: "Ada".into(),
+            password: Some("saved-hash".into()),
+            created: 1,
+            eventId: "legacy-poll".into(),
+            availability: vec!["0900-4".into()],
+            tentative: vec!["0915-4".into()],
+        };
+        let Value::EntityValue(mut properties) = record.into_value() else {
+            panic!("expected person properties");
+        };
+        let saved = DatastorePerson::from_value(Value::EntityValue(properties.clone())).unwrap();
+        assert_eq!(saved.tentative, ["0915-4"]);
+        assert_eq!(saved.password.as_deref(), Some("saved-hash"));
+
+        properties.remove("tentative");
+        let legacy = DatastorePerson::from_value(Value::EntityValue(properties)).unwrap();
+        assert!(legacy.tentative.is_empty());
+        assert_eq!(legacy.availability, ["0900-4"]);
+        assert_eq!(legacy.password.as_deref(), Some("saved-hash"));
+    }
 
     #[test]
     fn reads_events_written_before_slot_size_existed() {

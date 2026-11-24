@@ -97,4 +97,5 @@ pub struct Person {
     pub password_hash: Option<String>,
     pub created_at: DateTime<Utc>,
     pub availability: Vec<String>,
+    pub tentative: Vec<String>,
 }

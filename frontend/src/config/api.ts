@@ -30,12 +30,14 @@ export type EventResponse = z.infer<typeof EventResponse>
 
 export const PersonInput = z.object({
   availability: z.string().array(),
+  tentative: z.string().array().optional(),
 })
 export type PersonInput = z.infer<typeof PersonInput>
 
 export const PersonResponse = z.object({
   name: z.string(),
   availability: z.string().array(),
+  tentative: z.string().array().optional(),
   created_at: z.number(),
 })
 export type PersonResponse = z.infer<typeof PersonResponse>

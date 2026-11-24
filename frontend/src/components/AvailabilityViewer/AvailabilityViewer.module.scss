@@ -120,6 +120,15 @@
   @media (prefers-reduced-motion: reduce) {
     transition: none;
   }
+
+  &[data-tentative="true"]::before {
+    content: '';
+    position: absolute;
+    inset: 0 4px;
+    margin: auto;
+    height: 0;
+    border-top: 2px dotted var(--text);
+  }
 }
 
 .nonEditable:hover::after {
@@ -252,6 +261,10 @@
       &[data-disabled=true] {
         opacity: .5;
         border-color: var(--text);
+      }
+
+      &[data-tentative=true] {
+        border-style: dashed;
       }
     }
   }

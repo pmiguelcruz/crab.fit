@@ -1,12 +1,14 @@
 interface Person {
   name: string
   availability: string[]
+  tentative?: string[]
 }
 
 interface Availability {
   date: string
   /** Names of everyone who is available at this date */
   people: string[]
+  tentative: string[]
 }
 
 interface AvailabilityInfo {
@@ -15,6 +17,7 @@ interface AvailabilityInfo {
   min: number
   /** The amount of people available in the date with highest availability */
   max: number
+  bestTentative: number
 }
 
 /**
@@ -25,24 +28,29 @@ interface AvailabilityInfo {
 export const calculateAvailability = (dates: string[], people: Person[]): AvailabilityInfo => {
   let min = dates.length ? people.length : 0
   let max = 0
+  let bestTentative = 0
 
-  const byDate = new Map(dates.map(date => [date, [] as string[]]))
+  const byDate = new Map(dates.map(date => [date, { date, people: [] as string[], tentative: [] as string[] }]))
   for (const person of people) {
-    for (const date of new Set(person.availability)) {
-      byDate.get(date)?.push(person.name)
+    const firm = new Set(person.availability)
+    for (const date of firm) {
+      byDate.get(date)?.people.push(person.name)
+    }
+    for (const date of new Set(person.tentative)) {
+      if (!firm.has(date)) byDate.get(date)?.tentative.push(person.name)
     }
   }
 
-  const availabilities: Availability[] = dates.map(date => {
-    const names = byDate.get(date) ?? []
-    if (names.length < min) {
-      min = names.length
+  const availabilities: Availability[] = [...byDate.values()]
+  for (const { people, tentative } of availabilities) {
+    if (people.length < min) {
+      min = people.length
     }
-    if (names.length > max) {
-      max = names.length
+    if (people.length > max || (people.length === max && tentative.length > bestTentative)) {
+      max = people.length
+      bestTentative = tentative.length
     }
-    return { date, people: names }
-  })
+  }
 
-  return { availabilities, min, max }
+  return { availabilities, min, max, bestTentative }
 }

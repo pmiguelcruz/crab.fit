@@ -11,6 +11,8 @@ import styles from './DayCalendar.module.scss'
 
 export interface CalendarDayState {
   count?: number
+  tentativeCount?: number
+  marked?: 'firm' | 'tentative'
   color?: string
   highlight?: boolean
   selected?: boolean
@@ -40,7 +42,9 @@ const DayCalendar = ({ days, states, onSelect }: Props) => {
 
   const dayButton = (day: string, label: string, shortLabel: string, enabled = true) => {
     const state = states.get(day)
-    const description = state?.count === undefined ? label : t('days.count', { date: label, count: state.count })
+    let description = state?.count === undefined ? label : t('days.count', { date: label, count: state.count })
+    if (state?.marked) description += `, ${t(state.marked === 'tentative' ? 'tentative.label' : 'tentative.firm')}`
+    if (state?.tentativeCount) description += `, ${t('tentative.count', { count: state.tentativeCount })}`
     return <button
       type="button"
       key={day}
@@ -50,11 +54,14 @@ const DayCalendar = ({ days, states, onSelect }: Props) => {
       className={styles.day}
       data-count={state?.count !== undefined || undefined}
       data-highlight={state?.highlight || undefined}
+      data-marked={state?.marked}
       style={{ backgroundColor: state?.color }}
       onClick={() => onSelect(day, label)}
     >
       <span>{shortLabel}</span>
-      {state?.count !== undefined && <small>{state.count}</small>}
+      {state?.count !== undefined && <small>
+        {state.count}{!!state.tentativeCount && <span className={styles.tentativeCount}> +{state.tentativeCount}</span>}
+      </small>}
     </button>
   }
 

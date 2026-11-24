@@ -41,6 +41,7 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
 
   const [user, setUser] = useState<PersonLogin>()
   const [draft, setDraft] = useState<string[]>([])
+  const [tentative, setTentative] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [confirmRemoval, setConfirmRemoval] = useState(false)
   const [removed, setRemoved] = useState(false)
@@ -119,7 +120,7 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
     setSubmitting(true)
     setSubmitError('')
     try {
-      const submission = await updatePerson(event.id, user.name, { availability: draft }, user.token)
+      const submission = await updatePerson(event.id, user.name, { availability: draft, tentative }, user.token)
       setReceipt({ submission, timezone })
       addRecent({
         id: event.id,
@@ -132,6 +133,7 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
       })
       setUser(undefined)
       setDraft([])
+      setTentative([])
       setTab('group')
     } catch (e) {
       if (e instanceof Response && e.status === 401) {
@@ -157,6 +159,7 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
       addRecent({ id: event.id, name: event.name, created_at: event.created_at, user: undefined })
       setUser(undefined)
       setDraft([])
+      setTentative([])
       setReceipt(undefined)
       setRemoved(true)
       setTab('group')
@@ -180,6 +183,7 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
         <Login eventId={event?.id} user={user} disabled={submitting} onChange={person => {
           setUser(person)
           setDraft(person?.availability ?? [])
+          setTentative(person?.tentative ?? [])
           setSubmitError('')
           setConfirmRemoval(false)
           setRemoved(false)
@@ -285,7 +289,19 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
         datesOnly={datesOnly}
         interval={interval}
         value={draft}
-        onChange={value => { if (!submitting) setDraft(value) }}
+        onChange={value => {
+          if (submitting) return
+          const available = new Set(value)
+          setDraft(value)
+          setTentative(previous => previous.filter(slot => !available.has(slot)))
+        }}
+        tentative={tentative}
+        onChangeTentative={value => {
+          if (submitting) return
+          const possible = new Set(value)
+          setTentative(value)
+          setDraft(previous => previous.filter(slot => !possible.has(slot)))
+        }}
         table={table}
       />
       <Content isCentered>

@@ -28,11 +28,11 @@ const SubmissionReceipt = ({ event, submission, timezone }: Props) => {
     const weekdays = getWeekdayNames(i18n.language)
     const size = event.slot_size
     const weeksOrDates: Intl.DateTimeFormatOptions = weekly ? { weekday: 'long' } : { dateStyle: 'long' }
-    const slots = size === 'day'
-      ? [...submission.availability].sort().map(day => day.length === 1
+    const describe = (slots: string[]) => size === 'day'
+      ? [...slots].sort().map(day => day.length === 1
         ? weekdays[Number(day) - 1]
         : Temporal.PlainDate.from(day).toLocaleString(i18n.language, { dateStyle: 'full' }))
-      : convertTimesToDates(submission.availability, timezone)
+      : convertTimesToDates(slots, timezone)
         .sort(Temporal.ZonedDateTime.compare)
         .map(date => {
           const end = date.add({ minutes: slotMinutes(size) })
@@ -45,6 +45,8 @@ const SubmissionReceipt = ({ event, submission, timezone }: Props) => {
           )
           return `${date.toLocaleString(i18n.language, weeksOrDates)} · ${format(date)}–${format(end)}`
         })
+    const slots = describe(submission.availability)
+    const tentative = describe(submission.tentative ?? [])
     const receipt = [
       t('submission.receipt_title'),
       t('submission.receipt_event', { name: event.name }),
@@ -52,7 +54,8 @@ const SubmissionReceipt = ({ event, submission, timezone }: Props) => {
       t('submission.receipt_participant', { name: submission.name }),
       t('submission.receipt_time', { time, timezone }),
       '',
-      ...(slots.length ? slots : [t('submission.receipt_empty')]),
+      ...(slots.length ? slots : tentative.length ? [] : [t('submission.receipt_empty')]),
+      ...(tentative.length ? ['', t('tentative.label'), ...tentative] : []),
       '',
     ].join('\n')
 
