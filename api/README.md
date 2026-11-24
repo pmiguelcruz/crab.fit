@@ -140,6 +140,21 @@ in the browser.
 The API listens on `0.0.0.0:3000` by default. Set `LISTEN_ADDR` to override
 the IP address and port, for example `127.0.0.1:3000` for local development.
 
+### Reverse proxy rate limits
+
+The API limits requests by the IP address of the immediate connection. If
+the API runs behind a reverse proxy, set `TRUSTED_PROXY_IPS` to the exact
+connection IP addresses of the proxy, separated by commas. Configure that
+proxy to overwrite `X-Real-IP` with the visitor's IP address. For example,
+the Nginx location forwarding traffic to the API can include:
+
+```nginx
+proxy_set_header X-Real-IP $remote_addr;
+```
+
+Leave `TRUSTED_PROXY_IPS` unset for direct connections. A missing or invalid
+client address falls back to the connection IP.
+
 ### Poll slot sizes
 
 On event creation, set `slot_size` to `quarter_hour`, `half_hour`, `hour`,

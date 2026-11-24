@@ -29,6 +29,7 @@ mod errors;
 mod local_database;
 mod notifications;
 mod payloads;
+mod rate_limit;
 mod routes;
 mod sessions;
 
@@ -83,12 +84,16 @@ async fn main() {
                 .expect("Invalid FRONTEND_URL"),
         );
 
-    // Rate limiting configuration (using tower_governor)
-    // From the docs: Allows bursts with up to 20 requests and replenishes
-    // one element after 500ms, based on peer IP.
+    let client_ip = env::var("TRUSTED_PROXY_IPS")
+        .unwrap_or_default()
+        .parse::<rate_limit::ProxyAwareIp>()
+        .expect("TRUSTED_PROXY_IPS must be a comma-separated list of IP addresses");
+
+    // Allow bursts of up to 20 requests per client and replenish one every 500ms.
     let governor_config = Box::new(
         GovernorConfigBuilder::default()
             .burst_size(20)
+            .key_extractor(client_ip)
             .finish()
             .unwrap(),
     );
@@ -150,8 +155,8 @@ async fn main() {
         )
         .route("/tasks/cleanup", get(tasks::cleanup))
         .with_state(shared_state)
-        .layer(cors)
         .layer(rate_limit)
+        .layer(cors)
         .layer(TraceLayer::new_for_http());
 
     let addr: SocketAddr = env::var("LISTEN_ADDR")
