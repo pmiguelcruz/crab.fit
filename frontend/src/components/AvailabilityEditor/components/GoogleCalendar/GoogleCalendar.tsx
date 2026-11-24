@@ -20,13 +20,17 @@ interface Calendar {
   isChecked: boolean
 }
 
-const login = (callback: (tokenResponse: google.accounts.oauth2.TokenResponse) => void) => {
+const login = (
+  callback: (tokenResponse: google.accounts.oauth2.TokenResponse) => void,
+  onError: () => void,
+) => {
   if (!clientId) return
 
   const client = google.accounts.oauth2.initTokenClient({
     client_id: clientId,
     scope: 'https://www.googleapis.com/auth/calendar.readonly',
     callback,
+    error_callback: onError,
   })
   if (gapi?.client?.getToken()) {
     // Skip dialog for existing session
@@ -52,35 +56,65 @@ const GoogleCalendar = ({ timezone, timeStart, timeEnd, times, interval, onImpor
 
   // Prevent Google scripts from loading until button pressed
   const [canLoad, setCanLoad] = useState(false)
+  const [identityReady, setIdentityReady] = useState(false)
+  const [calendarReady, setCalendarReady] = useState(false)
   const [calendars, setCalendars] = useState<Calendar[]>()
   const [error, setError] = useState('')
 
-  // Clear calendars if logged out
-  useEffect(() => {
-    if (!canLoad) setCalendars(undefined)
-  }, [canLoad])
-
-  const fetchCalendars = useCallback((res: google.accounts.oauth2.TokenResponse) => {
-    if (res.error !== undefined) return setCanLoad(false)
-    if ('gapi' in window) {
-      gapi.client.calendar.calendarList.list({
-        'minAccessRole': 'freeBusyReader'
-      })
-        .then(res => setCalendars(res.result.items?.map(item => ({
-          id: item.id,
-          name: item.summary,
-          description: item.description,
-          color: item.backgroundColor,
-          isChecked: item.primary === true,
-        })) ?? []))
-        .catch(() => {
-          setError(t('you.integration.failed'))
-          setCanLoad(false)
-        })
-    } else {
-      setCanLoad(false)
-    }
+  const fail = useCallback(() => {
+    setError(t('you.integration.failed'))
+    setCanLoad(false)
   }, [t])
+
+  const loadCalendar = () => {
+    if (calendarReady) return
+    gapi.load('client', {
+      callback: () => {
+        gapi.client.init({
+          apiKey,
+          discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'],
+        }).then(() => setCalendarReady(true)).catch(fail)
+      },
+      onerror: fail,
+      timeout: 10000,
+      ontimeout: fail,
+    })
+  }
+
+  useEffect(() => {
+    if (!canLoad) {
+      setCalendars(undefined)
+      return
+    }
+    if (!identityReady || !calendarReady) return
+
+    let active = true
+    const failWhileActive = () => { if (active) fail() }
+    try {
+      login(async response => {
+        if (!active) return
+        if (response.error !== undefined || !response.access_token) return failWhileActive()
+        try {
+          gapi.client.setToken({ access_token: response.access_token })
+          const { result } = await gapi.client.calendar.calendarList.list({ minAccessRole: 'freeBusyReader' })
+          if (active) {
+            setCalendars(result.items?.map(item => ({
+              id: item.id,
+              name: item.summary,
+              description: item.description,
+              color: item.backgroundColor,
+              isChecked: item.primary === true,
+            })) ?? [])
+          }
+        } catch {
+          failWhileActive()
+        }
+      }, failWhileActive)
+    } catch {
+      failWhileActive()
+    }
+    return () => { active = false }
+  }, [calendarReady, canLoad, fail, identityReady])
 
   // Process times so they can be checked quickly
   const epochTimes = useMemo(() => times.map(t => parseSpecificDate(t).epochMilliseconds), [times])
@@ -102,10 +136,14 @@ const GoogleCalendar = ({ timezone, timeStart, timeEnd, times, interval, onImpor
       const busy = selected.flatMap(({ id }) => {
         const calendar = result.calendars?.[id]
         if (!calendar || calendar.errors?.length) throw new Error('Calendar data unavailable')
-        return (calendar.busy ?? []).map(period => ({
-          start: Date.parse(period.start),
-          end: Date.parse(period.end),
-        }))
+        return (calendar.busy ?? []).map(period => {
+          const start = Date.parse(period.start)
+          const end = Date.parse(period.end)
+          if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) {
+            throw new Error('Calendar data unavailable')
+          }
+          return { start, end }
+        })
       })
       const durationMs = interval * 60 * 1000
       onImport(times.filter((_, i) => !busy.some(period =>
@@ -122,14 +160,8 @@ const GoogleCalendar = ({ timezone, timeStart, timeEnd, times, interval, onImpor
     <ErrorAlert onClose={() => setError('')}>{error}</ErrorAlert>
     {!calendars && <Button
       onClick={() => {
-        if (!canLoad) {
-          setCanLoad(true)
-          if ('google' in window) {
-            login(fetchCalendars)
-          }
-        } else {
-          setCanLoad(false)
-        }
+        setError('')
+        setCanLoad(!canLoad)
       }}
       isLoading={canLoad}
       surfaceColor="#4286F5"
@@ -187,18 +219,13 @@ const GoogleCalendar = ({ timezone, timeStart, timeEnd, times, interval, onImpor
     {canLoad && <>
       <Script
         src="https://accounts.google.com/gsi/client"
-        onError={() => setCanLoad(false)}
-        onLoad={() => login(fetchCalendars)}
+        onError={fail}
+        onReady={() => setIdentityReady(true)}
       />
       <Script
         src="https://apis.google.com/js/api.js"
-        onError={() => setCanLoad(false)}
-        onLoad={() => gapi.load('client', () => {
-          gapi.client.init({
-            apiKey,
-            discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'],
-          }).catch(() => setCanLoad(false))
-        })}
+        onError={fail}
+        onReady={loadCalendar}
       />
     </>}
   </>
