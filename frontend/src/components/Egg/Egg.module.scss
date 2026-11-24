@@ -22,7 +22,7 @@
 .image {
   max-width: 80vw;
   max-height: 80vh;
-  border-radius: 10px;
+  border-radius: var(--corner-radius);
   display: block;
   position: absolute;
 }

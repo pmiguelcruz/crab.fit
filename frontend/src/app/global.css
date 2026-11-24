@@ -1,7 +1,14 @@
 :root {
   color-scheme: light dark;
 
+  --corner-radius: 2px;
   --primary: #F79E00;
+  --accent-placement: center top / 100vw 100vh no-repeat fixed;
+  --accent-fill: linear-gradient(109deg, #ef4589 12%, #ff8a32 38%, #edb524 44%, #28b879 51%, #279de7 57%, #8656f7 65%, #ea42ab 90%) var(--accent-placement);
+  --action-overlay: rgb(23 21 30 / .7);
+  --action-shadow: #211f28;
+  --action-text: #fff;
+  --action-fill: linear-gradient(var(--action-overlay), var(--action-overlay)), var(--accent-fill) var(--action-shadow);
 
   /* LIGHT */
   --background-light: #FFFFFF;
@@ -10,7 +17,8 @@
   --highlight-light: #F4BB60;
   --secondary-light: var(--shadow-light);
   --tertiary-light: var(--highlight-light);
-  --surface-light: #FEF2DD;
+  --surface-light: #eeedf1;
+  --surface-overlay-light: rgb(233 232 237 / .89);
   --error-light: #D32F2F;
   --loading-light: #DDDDDD;
   --font-weight-light: 600;
@@ -22,7 +30,8 @@
   --highlight-dark: #F4BB60;
   --secondary-dark: var(--highlight-dark);
   --tertiary-dark: var(--shadow-dark);
-  --surface-dark: #30240F;
+  --surface-dark: #222126;
+  --surface-overlay-dark: rgb(16 15 20 / .89);
   --error-dark: #E53935;
   --loading-dark: #444444;
   --font-weight-dark: 500;
@@ -35,6 +44,7 @@
   --secondary: var(--secondary-light);
   --tertiary: var(--tertiary-light);
   --surface: var(--surface-light);
+  --surface-overlay: var(--surface-overlay-light);
   --error: var(--error-light);
   --loading: var(--loading-light);
   --font-weight: var(--font-weight-light);
@@ -49,10 +59,23 @@
     --secondary: var(--secondary-dark);
     --tertiary: var(--tertiary-dark);
     --surface: var(--surface-dark);
+    --surface-overlay: var(--surface-overlay-dark);
     --error: var(--error-dark);
     --loading: var(--loading-dark);
     --font-weight: var(--font-weight-dark);
   }
+}
+
+@supports (height: 100dvh) {
+  :root {
+    --accent-placement: center top / 100vw 100dvh no-repeat fixed;
+  }
+}
+
+:root,
+.light,
+.dark {
+  --surface-fill: linear-gradient(var(--surface-overlay), var(--surface-overlay)), var(--accent-fill) var(--surface);
 }
 
 html {
@@ -71,12 +94,7 @@ body {
 
 .accent-text,
 .accent-icon {
-  background-image: var(--accent-field, linear-gradient(109deg, #ef4589 12%, #ff8a32 38%, #edb524 44%, #28b879 51%, #279de7 57%, #8656f7 65%, #ea42ab 90%));
-  background-size: 100vw 100vh;
-  background-size: 100vw 100dvh;
-  background-position: center top;
-  background-attachment: fixed;
-  background-repeat: no-repeat;
+  background: var(--accent-fill);
 }
 
 .accent-text {
@@ -112,6 +130,7 @@ body {
   --secondary: var(--secondary-light);
   --tertiary: var(--tertiary-light);
   --surface: var(--surface-light);
+  --surface-overlay: var(--surface-overlay-light);
   --error: var(--error-light);
   --loading: var(--loading-light);
   --font-weight: var(--font-weight-light);
@@ -128,6 +147,7 @@ body {
     --secondary: var(--secondary-dark);
     --tertiary: var(--tertiary-dark);
     --surface: var(--surface-dark);
+    --surface-overlay: var(--surface-overlay-dark);
     --error: var(--error-dark);
     --loading: var(--loading-dark);
     --font-weight: var(--font-weight-dark);
@@ -142,7 +162,7 @@ body {
 
 a {
   color: var(--primary);
-  border-radius: .2em;
+  border-radius: var(--corner-radius);
 }
 a:focus-visible {
   outline: var(--focus-ring);
@@ -154,23 +174,23 @@ a:focus-visible {
   height: 16px;
 }
 *::-webkit-scrollbar-track {
-  background: var(--surface);
+  background: var(--surface-fill);
 }
 *::-webkit-scrollbar-thumb {
-  border-radius: 100px;
+  border-radius: var(--corner-radius);
   border: 4px solid var(--surface);
   width: 12px;
-  background: var(--tertiary);
+  background: var(--action-fill);
 }
 *::-webkit-scrollbar-thumb:hover {
-  background: var(--primary);
+  border-color: var(--loading);
 }
 *::-webkit-scrollbar-thumb:active {
-  background: var(--secondary);
+  border-color: var(--text);
 }
 
 input[type=checkbox], input[type=radio] {
-  accent-color: var(--primary);
+  accent-color: var(--action-shadow);
 }
 input[type=checkbox]:focus-visible, input[type=radio]:focus-visible {
   outline: var(--focus-ring);

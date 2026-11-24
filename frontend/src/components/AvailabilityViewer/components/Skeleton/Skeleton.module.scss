@@ -5,7 +5,7 @@
     height: 382px;
     width: 300px;
     border: 2px solid currentColor;
-    border-radius: 3px;
+    border-radius: var(--corner-radius);
     margin-block: 2px 10px;
     position: relative;
   }
@@ -20,7 +20,7 @@
     display: block;
     width: 3ch;
     background: currentColor;
-    border-radius: .2em;
+    border-radius: var(--corner-radius);
   }
 }
 

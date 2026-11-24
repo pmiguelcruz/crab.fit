@@ -31,7 +31,7 @@
   }
 
   button[aria-expanded=true] > div {
-    background: var(--surface);
+    background: var(--surface-fill);
   }
 }
 
@@ -63,8 +63,8 @@
 .about {
   margin: .85rem 0 0;
   padding: 1rem 1.2rem 1.25rem;
-  background: var(--surface);
-  border-radius: .75rem;
+  background: var(--surface-fill);
+  border-radius: var(--corner-radius);
 
   a {
     color: inherit;

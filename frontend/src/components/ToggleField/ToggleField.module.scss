@@ -1,16 +1,16 @@
 .toggleContainer {
   display: flex;
-  border-radius: 3px;
+  border-radius: var(--corner-radius);
 
   & > div:first-of-type label {
     border-inline-start: 1px solid var(--primary);
-    border-end-start-radius: 2px;
-    border-start-start-radius: 2px;
+    border-end-start-radius: var(--corner-radius);
+    border-start-start-radius: var(--corner-radius);
   }
   & > div:last-of-type label {
     border-inline-end: 1px solid var(--primary);
-    border-start-end-radius: 2px;
-    border-end-end-radius: 2px;
+    border-start-end-radius: var(--corner-radius);
+    border-end-end-radius: var(--corner-radius);
   }
 }
 
@@ -29,8 +29,8 @@
   appearance: none;
 
   &:checked + label {
-    color: var(--background);
-    background-color: var(--primary);
+    color: var(--action-text);
+    background: var(--action-fill);
   }
   &:focus-visible + label {
     outline: var(--focus-ring);

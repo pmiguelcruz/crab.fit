@@ -26,32 +26,37 @@
   padding: 4px 2px;
   overflow-wrap: anywhere;
   border: 1px solid var(--primary);
-  border-radius: 3px;
+  border-radius: var(--corner-radius);
   background-color: var(--surface);
   color: var(--text);
   font: inherit;
   cursor: pointer;
 
+  &:not([data-count="true"]) {
+    background: var(--surface-fill);
+  }
+
   &[data-count="true"] > * {
     padding-inline: 3px;
-    border-radius: 3px;
+    border-radius: var(--corner-radius);
     background-color: var(--background);
   }
 
   &[aria-pressed="true"] {
     outline: 2px solid var(--text);
     outline-offset: -3px;
-    background-color: var(--primary);
     font-weight: 700;
   }
 
   &[data-marked="firm"] {
-    background-color: var(--primary);
-    color: #fff;
+    background: var(--action-fill);
+    color: var(--action-text);
+    outline-color: var(--action-text);
   }
 
   &[data-marked="tentative"] {
-    background-color: var(--surface);
+    background: var(--surface-fill);
+    color: var(--text);
     border-style: dashed;
     border-width: 2px;
   }

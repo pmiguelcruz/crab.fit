@@ -8,7 +8,7 @@
     position: absolute;
     width: 100%;
     height: 100%;
-    border-radius: 10px;
+    border-radius: var(--corner-radius);
   }
 }
 
@@ -20,7 +20,7 @@
   max-width: 400px;
   margin: 0 auto;
   transition: transform .15s;
-  border-radius: 10px;
+  border-radius: var(--corner-radius);
 
   &:hover, &:focus {
     transform: translateY(-2px);

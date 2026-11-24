@@ -1,6 +1,6 @@
 'use client'
 
-import { type CSSProperties, type FormEvent, type ReactNode, useEffect, useState } from 'react'
+import { type FormEvent, type ReactNode, useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 
 import Button from '/src/components/Button/Button'
@@ -12,20 +12,6 @@ import { useTranslation } from '/src/i18n/client'
 import headerStyles from './Header.module.scss'
 import styles from './HeaderPanels.module.scss'
 
-const randomAccent = () => {
-  const start = Math.floor(Math.random() * 360)
-  const angle = 87 + Math.floor(Math.random() * 7)
-  const hue = (offset: number) => (start + offset) % 360
-  const stops = [
-    [0, '0%'], [28, 'calc(50% - 168px)'], [58, 'calc(50% - 120px)'],
-    [90, 'calc(50% - 80px)'], [121, 'calc(50% - 40px)'], [160, '50%'],
-    [198, 'calc(50% + 40px)'], [230, 'calc(50% + 80px)'],
-    [259, 'calc(50% + 120px)'], [295, 'calc(50% + 168px)'], [330, '100%'],
-  ] as const
-  const spectrum = stops.map(([offset, stop]) => `hsl(${hue(offset)} 90% 52%) ${stop}`)
-  return `radial-gradient(ellipse at 12% 78%, hsl(${hue(282)} 94% 56% / .6), transparent 47%), radial-gradient(ellipse at 87% 9%, hsl(${hue(27)} 97% 60% / .65), transparent 39%), linear-gradient(${angle}deg, ${spectrum.join(', ')})`
-}
-
 const HeaderPanels = ({ children, isSmall }: { children: ReactNode; isSmall?: boolean }) => {
   const { t } = useTranslation(['home', 'admin'])
   const router = useRouter()
@@ -33,13 +19,8 @@ const HeaderPanels = ({ children, isSmall }: { children: ReactNode; isSmall?: bo
   const [panel, setPanel] = useState<'about' | 'admin' | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [accent, setAccent] = useState<string>()
   const aboutOpen = panel === 'about'
   const aboutLinkTabIndex = aboutOpen ? undefined : -1
-
-  useEffect(() => {
-    setAccent(randomAccent())
-  }, [])
 
   useEffect(() => {
     const openFromHash = () => {
@@ -78,7 +59,7 @@ const HeaderPanels = ({ children, isSmall }: { children: ReactNode; isSmall?: bo
     }
   }
 
-  return <header className={headerStyles.header} data-small={isSmall} style={{ '--accent-field': accent } as CSSProperties}>
+  return <header className={headerStyles.header} data-small={isSmall}>
     {children}
     <div className={styles.controls}>
       <div className={styles.actions}>

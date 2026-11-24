@@ -32,19 +32,19 @@
     justify-content: center;
     padding: 10px 0;
     color: #FFF;
-    background-color: var(--primary);
+    background: var(--action-fill);
 
     &:first-of-type {
-      border-start-start-radius: 3px;
-      border-end-start-radius: 3px;
+      border-start-start-radius: var(--corner-radius);
+      border-end-start-radius: var(--corner-radius);
       color: inherit;
-      background-color: var(--surface);
+      background: var(--surface-fill);
     }
     &:last-of-type {
-      border-end-end-radius: 3px;
-      border-start-end-radius: 3px;
+      border-end-end-radius: var(--corner-radius);
+      border-start-end-radius: var(--corner-radius);
       color: inherit;
-      background-color: var(--surface);
+      background: var(--surface-fill);
     }
   }
 }

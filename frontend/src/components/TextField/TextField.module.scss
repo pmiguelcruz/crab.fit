@@ -2,12 +2,12 @@
   width: 100%;
   box-sizing: border-box;
   font: inherit;
-  background: var(--surface);
+  background: var(--surface-fill);
   color: inherit;
   padding: 10px 14px;
   border: 1px solid var(--primary);
   box-shadow: inset 0 0 0 0 var(--primary);
-  border-radius: 3px;
+  border-radius: var(--corner-radius);
   font-size: 18px;
 
   &:focus-visible {

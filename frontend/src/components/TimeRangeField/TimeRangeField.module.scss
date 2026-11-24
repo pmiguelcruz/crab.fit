@@ -1,8 +1,8 @@
 .range {
   user-select: none;
-  background-color: var(--surface);
+  background: var(--surface-fill);
   border: 1px solid var(--primary);
-  border-radius: 3px;
+  border-radius: var(--corner-radius);
   height: 50px;
   position: relative;
   margin: 38px 6px 18px;
@@ -12,8 +12,8 @@
   height: calc(100% + 20px);
   width: 20px;
   border: 1px solid var(--primary);
-  background-color: var(--highlight);
-  border-radius: 3px;
+  background: var(--action-fill);
+  border-radius: var(--corner-radius);
   position: absolute;
   top: -10px;
   cursor: ew-resize;
@@ -35,7 +35,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--shadow);
+    color: var(--action-text);
   }
 
   &:before {
@@ -59,8 +59,8 @@
   position: absolute;
   height: 100%;
   top: 0;
-  background-color: var(--primary);
-  border-radius: 2px;
+  background: var(--action-fill);
+  border-radius: var(--corner-radius);
   transition: left .1s, right .1s;
 
   @media (prefers-reduced-motion: reduce) {

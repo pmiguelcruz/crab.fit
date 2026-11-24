@@ -28,7 +28,7 @@
   display: inline;
   cursor: pointer;
   appearance: none;
-  border-radius: .2em;
+  border-radius: var(--corner-radius);
 
   &:focus-visible {
     outline: var(--focus-ring);

@@ -34,16 +34,16 @@
   grid-gap: 2px;
 
   & button:first-of-type {
-    border-top-left-radius: 3px;
+    border-top-left-radius: var(--corner-radius);
   }
   & button:nth-of-type(7) {
-    border-top-right-radius: 3px;
+    border-top-right-radius: var(--corner-radius);
   }
   & button:nth-last-of-type(7) {
-    border-bottom-left-radius: 3px;
+    border-bottom-left-radius: var(--corner-radius);
   }
   & button:last-of-type {
-    border-bottom-right-radius: 3px;
+    border-bottom-right-radius: var(--corner-radius);
   }
 }
 
@@ -55,7 +55,7 @@
   margin: 0;
   appearance: none;
   transition: background-color .1s;
-  background-color: var(--surface);
+  background: var(--surface-fill);
   border: 1px solid var(--primary);
   display: flex;
   align-items: center;
@@ -85,7 +85,7 @@
 }
 .selected {
   color: #FFF;
-  background-color: var(--primary);
+  background: var(--action-fill);
 
   .otherMonth {
     color: rgba(255,255,255,.5);

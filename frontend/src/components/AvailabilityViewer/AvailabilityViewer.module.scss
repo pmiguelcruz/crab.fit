@@ -48,7 +48,7 @@
   font-size: 12px;
   user-select: none;
   background: var(--background);
-  border-radius: .3em;
+  border-radius: var(--corner-radius);
   padding: .1em .2em;
   white-space: nowrap;
 }
@@ -93,13 +93,13 @@
 
   &[data-border-left=true] {
     border-left: 2px solid var(--text);
-    border-top-left-radius: 3px;
-    border-bottom-left-radius: 3px;
+    border-top-left-radius: var(--corner-radius);
+    border-bottom-left-radius: var(--corner-radius);
   }
   &[data-border-right=true] {
     border-right: 2px solid var(--text);
-    border-top-right-radius: 3px;
-    border-bottom-right-radius: 3px;
+    border-top-right-radius: var(--corner-radius);
+    border-bottom-right-radius: var(--corner-radius);
   }
 
   & .time + .timespace, & .timespace:first-of-type {
@@ -177,7 +177,7 @@
 .person {
   font: inherit;
   font-size: 15px;
-  border-radius: 3px;
+  border-radius: var(--corner-radius);
   border: 1px solid var(--text);
   color: var(--text);
   font-weight: 500;
@@ -198,7 +198,7 @@
 }
 
 .personSelected {
-  background: var(--primary);
+  background: var(--action-fill);
   color: #FFFFFF;
   border-color: var(--primary);
 }
@@ -233,7 +233,7 @@
 .tooltip {
   position: absolute;
   border: 1px solid var(--text);
-  border-radius: 3px;
+  border-radius: var(--corner-radius);
   padding: 4px 8px;
   background-color: var(--background);
   max-width: 200px;
@@ -261,7 +261,7 @@
       margin: 2px;
       padding: 1px 4px;
       border: 1px solid var(--primary);
-      border-radius: 3px;
+      border-radius: var(--corner-radius);
 
       &[data-disabled=true] {
         opacity: .5;
