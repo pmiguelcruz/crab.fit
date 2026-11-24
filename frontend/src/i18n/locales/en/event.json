@@ -90,6 +90,21 @@
     "times_help": "Dotted slots have tentative responses. Tentative responses break ties between slots with the same number of available people.",
     "days_help": "Numbers after + are tentative responses. Tentative responses break ties between dates with the same number of available people."
   },
+  "teams": {
+    "optional": "Respondent groups (optional)",
+    "configure": "Participants can choose a group when they submit.",
+    "number": "Group {{number}}",
+    "add": "Add group",
+    "remove": "Remove",
+    "remove_number": "Remove group {{number}}",
+    "invalid": "Give each group a different name.",
+    "your_group": "Your group",
+    "unassigned": "No group",
+    "responses": "Responses by group",
+    "group_count_one": "{{group}}, {{count}} response",
+    "group_count_other": "{{group}}, {{count}} responses",
+    "receipt": "Group: {{group}}"
+  },
   "days": {
     "calendar": "Poll dates",
     "month": "Month",

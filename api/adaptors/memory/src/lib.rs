@@ -2,7 +2,7 @@ use std::{collections::HashMap, error::Error, fmt::Display};
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use common::{Adaptor, Event, Person, Stats};
+use common::{Adaptor, Event, EventGroup, Person, Stats};
 use tokio::sync::Mutex;
 
 struct State {
@@ -121,6 +121,7 @@ impl Adaptor for MemoryAdaptor {
         id: String,
         name: String,
         times: Option<Vec<String>>,
+        groups: Option<Vec<EventGroup>>,
     ) -> Result<Option<Event>, Self::Error> {
         let mut state = self.state.lock().await;
         let Some(event) = state.events.get_mut(&id) else {
@@ -129,6 +130,9 @@ impl Adaptor for MemoryAdaptor {
         event.name = name;
         if let Some(times) = times {
             event.times = times;
+        }
+        if let Some(groups) = groups {
+            event.groups = groups;
         }
         Ok(Some(event.clone()))
     }
@@ -218,6 +222,7 @@ mod tests {
             for (id, visited_at) in [("old", old), ("active", now)] {
                 store
                     .create_event(Event {
+                        groups: vec![],
                         id: id.into(),
                         name: id.into(),
                         created_at: old,
@@ -237,6 +242,7 @@ mod tests {
                             created_at: old,
                             availability: vec!["0900-1".into()],
                             tentative: vec![],
+                            group_id: None,
                         },
                     )
                     .await

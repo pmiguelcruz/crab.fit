@@ -190,6 +190,11 @@
     outline: var(--focus-ring);
     outline-offset: 2px;
   }
+
+  &:disabled {
+    opacity: .65;
+    cursor: default;
+  }
 }
 
 .personSelected {

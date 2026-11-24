@@ -53,9 +53,21 @@ Participant login at `GET /event/{event_id}/people/{person_name}` returns a
 one-hour token in the `token` field. Use it as the bearer credential for one
 successful availability PATCH. A successful submission returns the saved
 availability and its `submitted_at` UTC timestamp for the browser receipt.
+Use `tentative` for a separate list of tentative choices. Each choice can
+appear in only one list. Omitting `tentative` keeps tentative choices that
+remain valid and do not overlap the new confirmed choices.
 Event passwords remain optional, with existing passwords required at sign-in.
 Sessions are held by the API process. If running multiple API instances,
 route a session's requests to the same instance.
+
+### Respondent groups
+
+To offer groups, include a `groups` array of objects with a `name` when
+creating the poll. The API assigns each group an ID. Submit a response with
+`group_id` set to one of the poll's group IDs to join it. Omit the field to
+keep the current assignment or set it to `null` to clear it. Admin edits can
+rename a group by including its ID and new name, or remove a group by leaving
+it out of the array. Removing a group preserves its participants' choices.
 
 ### Self-hosted URLs and listening address
 

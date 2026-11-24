@@ -42,6 +42,7 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
   const [user, setUser] = useState<PersonLogin>()
   const [draft, setDraft] = useState<string[]>([])
   const [tentative, setTentative] = useState<string[]>([])
+  const [groupId, setGroupId] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [confirmRemoval, setConfirmRemoval] = useState(false)
   const [removed, setRemoved] = useState(false)
@@ -120,7 +121,9 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
     setSubmitting(true)
     setSubmitError('')
     try {
-      const submission = await updatePerson(event.id, user.name, { availability: draft, tentative }, user.token)
+      const submission = await updatePerson(event.id, user.name, {
+        availability: draft, tentative, group_id: groupId || null,
+      }, user.token)
       setReceipt({ submission, timezone })
       addRecent({
         id: event.id,
@@ -184,6 +187,7 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
           setUser(person)
           setDraft(person?.availability ?? [])
           setTentative(person?.tentative ?? [])
+          setGroupId(person?.group_id ?? '')
           setSubmitError('')
           setConfirmRemoval(false)
           setRemoved(false)
@@ -279,9 +283,21 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
     {tab === 'group' ? <AvailabilityViewer
       times={expandedTimes}
       people={people}
+      groups={event?.groups}
       datesOnly={datesOnly}
       table={table}
     /> : user && <>
+      {!!event?.groups?.length && <Content>
+        <SelectField
+          label={t('teams.your_group')}
+          name="respondent-group"
+          defaultOption={t('teams.unassigned')}
+          options={Object.fromEntries(event.groups.map(group => [group.id, group.name]))}
+          value={groupId}
+          disabled={submitting}
+          onChange={e => setGroupId(e.currentTarget.value)}
+        />
+      </Content>}
       <AvailabilityEditor
         eventId={event?.id}
         times={expandedTimes}

@@ -13,6 +13,7 @@ pub struct Model {
     pub times: Json,
     pub timezone: String,
     pub slot_size: Option<String>,
+    pub groups: Option<Json>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

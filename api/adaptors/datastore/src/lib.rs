@@ -2,7 +2,7 @@ use std::{env, error::Error, fmt::Display};
 
 use async_trait::async_trait;
 use chrono::{DateTime, NaiveDateTime, Utc};
-use common::{Adaptor, Event, Person, Stats};
+use common::{Adaptor, Event, EventGroup, Person, Stats};
 use google_cloud::{
     authorize::ApplicationCredentials,
     datastore::{Client, Filter, FromValue, IntoValue, Key, KeyID, Query, Value},
@@ -196,6 +196,7 @@ impl Adaptor for DatastoreAdaptor {
         id: String,
         name: String,
         times: Option<Vec<String>>,
+        groups: Option<Vec<EventGroup>>,
     ) -> Result<Option<Event>, Self::Error> {
         let mut client = self.client.lock().await;
         let key = Key::new(EVENT_KIND).id(id.clone());
@@ -205,6 +206,9 @@ impl Adaptor for DatastoreAdaptor {
         event.name = name;
         if let Some(times) = times {
             event.times = times;
+        }
+        if let Some(groups) = groups {
+            event.groups = groups.into_iter().map(DatastoreGroup::from).collect();
         }
         let updated = event.to_event(id);
         client.put((key, event)).await?;
@@ -315,6 +319,27 @@ struct DatastoreEvent {
     timezone: String,
     #[datastore(rename = "slot_size")]
     slot_size: Option<String>,
+    groups: Vec<DatastoreGroup>,
+}
+
+#[derive(Clone, FromValue, IntoValue)]
+struct DatastoreGroup {
+    id: String,
+    name: String,
+}
+
+impl From<EventGroup> for DatastoreGroup {
+    fn from(EventGroup { id, name }: EventGroup) -> Self {
+        Self { id, name }
+    }
+}
+
+fn optional_string(value: Option<Value>) -> Result<Option<String>, ConvertError> {
+    match value {
+        None | Some(Value::OptionValue(None)) => Ok(None),
+        Some(Value::OptionValue(Some(value))) => String::from_value(*value).map(Some),
+        Some(value) => String::from_value(value).map(Some),
+    }
 }
 
 impl FromValue for DatastoreEvent {
@@ -326,11 +351,11 @@ impl FromValue for DatastoreEvent {
             });
         };
         // The SDK's generated decoder requires every property, even Option fields.
-        let slot_size = match properties.remove("slot_size") {
-            None | Some(Value::OptionValue(None)) => None,
-            Some(Value::OptionValue(Some(value))) => Some(String::from_value(*value)?),
-            Some(value) => Some(String::from_value(value)?),
-        };
+        let slot_size = optional_string(properties.remove("slot_size"))?;
+        let groups = properties
+            .remove("groups")
+            .map(Vec::from_value)
+            .transpose()?;
         let mut required = |name: &str| {
             properties
                 .remove(name)
@@ -343,6 +368,7 @@ impl FromValue for DatastoreEvent {
             times: Vec::from_value(required("times")?)?,
             timezone: String::from_value(required("timezone")?)?,
             slot_size,
+            groups: groups.unwrap_or_default(),
         })
     }
 }
@@ -356,6 +382,8 @@ struct DatastorePerson {
     eventId: String,
     availability: Vec<String>,
     tentative: Vec<String>,
+    #[datastore(rename = "group_id")]
+    group_id: Option<String>,
 }
 
 impl FromValue for DatastorePerson {
@@ -370,11 +398,8 @@ impl FromValue for DatastorePerson {
             .remove("tentative")
             .map(Vec::from_value)
             .transpose()?;
-        let password = match properties.remove("password") {
-            None | Some(Value::OptionValue(None)) => None,
-            Some(Value::OptionValue(Some(value))) => Some(String::from_value(*value)?),
-            Some(value) => Some(String::from_value(value)?),
-        };
+        let password = optional_string(properties.remove("password"))?;
+        let group_id = optional_string(properties.remove("group_id"))?;
         let mut required = |name: &str| {
             properties
                 .remove(name)
@@ -387,6 +412,7 @@ impl FromValue for DatastorePerson {
             eventId: String::from_value(required("eventId")?)?,
             availability: Vec::from_value(required("availability")?)?,
             tentative: tentative.unwrap_or_default(),
+            group_id,
         })
     }
 }
@@ -399,6 +425,7 @@ impl From<DatastorePerson> for Person {
             created_at: unix_to_date(value.created),
             availability: value.availability,
             tentative: value.tentative,
+            group_id: value.group_id,
         }
     }
 }
@@ -412,6 +439,7 @@ impl DatastorePerson {
             eventId: event_id,
             availability: person.availability,
             tentative: person.tentative,
+            group_id: person.group_id,
         }
     }
 }
@@ -425,6 +453,7 @@ impl From<Event> for DatastoreEvent {
             times: value.times,
             timezone: value.timezone,
             slot_size: value.slot_size.map(|size| size.as_str().to_owned()),
+            groups: value.groups.into_iter().map(DatastoreGroup::from).collect(),
         }
     }
 }
@@ -439,6 +468,14 @@ impl DatastoreEvent {
             times: self.times.clone(),
             timezone: self.timezone.clone(),
             slot_size: self.slot_size.as_deref().and_then(|size| size.parse().ok()),
+            groups: self
+                .groups
+                .iter()
+                .map(|group| EventGroup {
+                    id: group.id.clone(),
+                    name: group.name.clone(),
+                })
+                .collect(),
         }
     }
 }
@@ -488,6 +525,7 @@ mod tests {
             eventId: "legacy-poll".into(),
             availability: vec!["0900-4".into()],
             tentative: vec!["0915-4".into()],
+            group_id: Some("group-id".into()),
         };
         let Value::EntityValue(mut properties) = record.into_value() else {
             panic!("expected person properties");
@@ -495,12 +533,15 @@ mod tests {
         let saved = DatastorePerson::from_value(Value::EntityValue(properties.clone())).unwrap();
         assert_eq!(saved.tentative, ["0915-4"]);
         assert_eq!(saved.password.as_deref(), Some("saved-hash"));
+        assert_eq!(saved.group_id.as_deref(), Some("group-id"));
 
         properties.remove("tentative");
+        properties.remove("group_id");
         let legacy = DatastorePerson::from_value(Value::EntityValue(properties)).unwrap();
         assert!(legacy.tentative.is_empty());
         assert_eq!(legacy.availability, ["0900-4"]);
         assert_eq!(legacy.password.as_deref(), Some("saved-hash"));
+        assert!(legacy.group_id.is_none());
     }
 
     #[test]
@@ -512,6 +553,10 @@ mod tests {
             times: vec!["0915-4".into()],
             timezone: "UTC".into(),
             slot_size: Some("half_hour".into()),
+            groups: vec![DatastoreGroup {
+                id: "test-group".into(),
+                name: "Test group".into(),
+            }],
         };
         let Value::EntityValue(mut properties) = record.into_value() else {
             panic!("expected event properties");
@@ -521,6 +566,7 @@ mod tests {
             .unwrap()
             .to_event("poll".into());
         assert_eq!(event.slot_size, Some(SlotSize::HalfHour));
+        assert_eq!(event.groups.first().unwrap().name, "Test group");
 
         properties.insert("slot_size".into(), "hour".into_value());
         let event = DatastoreEvent::from_value(Value::EntityValue(properties.clone()))
@@ -529,10 +575,12 @@ mod tests {
         assert_eq!(event.slot_size, Some(SlotSize::Hour));
 
         properties.remove("slot_size");
+        properties.remove("groups");
         let event = DatastoreEvent::from_value(Value::EntityValue(properties))
             .unwrap()
             .to_event("poll".into());
         assert_eq!(event.slot_size, None);
         assert_eq!(event.times, ["0915-4"]);
+        assert!(event.groups.is_empty());
     }
 }

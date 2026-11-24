@@ -9,7 +9,10 @@ use common::Adaptor;
 use crate::{
     errors::ApiError,
     payloads::{ApiResult, EventEdit, EventResponse, PinInput, TokenResponse},
-    routes::{event::valid_choices, person::remove_person},
+    routes::{
+        event::{valid_choices, validate_groups},
+        person::remove_person,
+    },
     sessions::{Session, ADMIN_TTL},
     State,
 };
@@ -83,21 +86,30 @@ pub async fn update_event<A: Adaptor>(
     if name.is_empty() || name.chars().count() > 255 || name.chars().any(char::is_control) {
         return Err(ApiError::InvalidInput);
     }
-    if let Some(choices) = &input.times {
+    let mut groups = None;
+    if input.times.is_some() || input.groups.is_some() {
         let event = state
             .adaptor
             .get_event(id.clone())
             .await
             .map_err(ApiError::AdaptorError)?
             .ok_or(ApiError::NotFound)?;
-        if !valid_choices(choices, event.slot_size) {
+        if input
+            .times
+            .as_ref()
+            .is_some_and(|choices| !valid_choices(choices, event.slot_size))
+        {
             return Err(ApiError::InvalidInput);
+        }
+        if let Some(group_edits) = input.groups {
+            groups =
+                Some(validate_groups(group_edits, &event.groups).ok_or(ApiError::InvalidInput)?);
         }
     }
 
     let event = state
         .adaptor
-        .update_event(id, name.to_owned(), input.times)
+        .update_event(id, name.to_owned(), input.times, groups)
         .await
         .map_err(ApiError::AdaptorError)?
         .ok_or(ApiError::NotFound)?;

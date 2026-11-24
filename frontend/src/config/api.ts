@@ -10,11 +10,17 @@ if (process.env.NEXT_PUBLIC_API_URL === undefined) {
 
 const API_BASE = new URL(process.env.NEXT_PUBLIC_API_URL)
 
+const GroupEdit = z.object({ name: z.string(), id: z.string().optional() })
+export type GroupEdit = z.infer<typeof GroupEdit>
+const EventGroup = GroupEdit.required()
+export type EventGroup = z.infer<typeof EventGroup>
+
 export const EventInput = z.object({
   name: z.string().optional(),
   times: z.string().array(),
   timezone: z.string(),
   slot_size: z.enum(slotSizes).optional(),
+  groups: GroupEdit.array().optional(),
 })
 export type EventInput = z.infer<typeof EventInput>
 
@@ -25,12 +31,14 @@ export const EventResponse = z.object({
   timezone: z.string(),
   slot_size: z.enum(slotSizes).optional(),
   created_at: z.number(),
+  groups: EventGroup.array().optional(),
 })
 export type EventResponse = z.infer<typeof EventResponse>
 
 export const PersonInput = z.object({
   availability: z.string().array(),
   tentative: z.string().array().optional(),
+  group_id: z.string().nullable().optional(),
 })
 export type PersonInput = z.infer<typeof PersonInput>
 
@@ -38,6 +46,7 @@ export const PersonResponse = z.object({
   name: z.string(),
   availability: z.string().array(),
   tentative: z.string().array().optional(),
+  group_id: z.string().optional(),
   created_at: z.number(),
 })
 export type PersonResponse = z.infer<typeof PersonResponse>
@@ -80,7 +89,7 @@ export type PersonLogin = z.infer<typeof PersonLogin>
 const Submission = PersonResponse.extend({ submitted_at: z.number() })
 export type Submission = z.infer<typeof Submission>
 
-type EventEdit = { name: string; times?: string[] }
+type EventEdit = { name: string; times?: string[]; groups?: GroupEdit[] }
 
 const remove = async (url: string, token: string) => {
   const res = await fetch(new URL(url, API_BASE), {

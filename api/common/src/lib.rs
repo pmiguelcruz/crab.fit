@@ -32,6 +32,7 @@ pub trait Adaptor: Send + Sync {
         id: String,
         name: String,
         times: Option<Vec<String>>,
+        groups: Option<Vec<EventGroup>>,
     ) -> Result<Option<Event>, Self::Error>;
     async fn delete_event(&self, id: String) -> Result<bool, Self::Error>;
 
@@ -55,6 +56,13 @@ pub struct Event {
     pub visited_at: DateTime<Utc>,
     pub times: Vec<String>,
     pub timezone: String,
+    pub groups: Vec<EventGroup>,
+}
+
+#[derive(Clone, serde::Deserialize, serde::Serialize)]
+pub struct EventGroup {
+    pub id: String,
+    pub name: String,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
@@ -98,4 +106,5 @@ pub struct Person {
     pub created_at: DateTime<Utc>,
     pub availability: Vec<String>,
     pub tentative: Vec<String>,
+    pub group_id: Option<String>,
 }

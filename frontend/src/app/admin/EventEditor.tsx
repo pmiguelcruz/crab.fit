@@ -4,9 +4,10 @@ import { type FormEvent, useRef, useState } from 'react'
 
 import Button from '/src/components/Button/Button'
 import Error from '/src/components/Error/Error'
+import GroupFields, { validGroupNames } from '/src/components/GroupFields/GroupFields'
 import SelectField from '/src/components/SelectField/SelectField'
 import TextField from '/src/components/TextField/TextField'
-import { editEvent, EventResponse } from '/src/config/api'
+import { editEvent, EventResponse, GroupEdit } from '/src/config/api'
 import { useTranslation } from '/src/i18n/client'
 import { getWeekdayNames } from '/src/utils'
 
@@ -23,6 +24,7 @@ interface Props {
 
 const EventEditor = ({ event, token, onSaved, onCancel, onExpired }: Props) => {
   const { t, i18n } = useTranslation('admin')
+  const { t: eventText } = useTranslation('event')
   const datesOnly = event.slot_size === 'day'
   const weekly = event.times[0]?.length === (datesOnly ? 1 : 6)
   const [originals] = useState(() => {
@@ -38,6 +40,7 @@ const EventEditor = ({ event, token, onSaved, onCancel, onExpired }: Props) => {
   const nextId = useRef(days.length)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [groups, setGroups] = useState<GroupEdit[]>(event.groups ?? [])
   const weekdays = Object.fromEntries(getWeekdayNames(i18n.language).map((day, index) => [index + 1, day]))
 
   const submit = async (e: FormEvent<HTMLFormElement>) => {
@@ -45,6 +48,7 @@ const EventEditor = ({ event, token, onSaved, onCancel, onExpired }: Props) => {
     const name = String(new FormData(e.currentTarget).get('title') ?? '').trim()
     setError('')
     if (!name) return setError(t('title_required'))
+    if (!validGroupNames(groups)) return setError(eventText('teams.invalid'))
 
     let times
     try {
@@ -55,7 +59,7 @@ const EventEditor = ({ event, token, onSaved, onCancel, onExpired }: Props) => {
 
     setBusy(true)
     try {
-      onSaved(await editEvent(event.id, { name, times }, token))
+      onSaved(await editEvent(event.id, { name, times, groups }, token))
     } catch (e) {
       if (e instanceof Response && e.status === 401) onExpired()
       else setError(t('save_error'))
@@ -94,6 +98,7 @@ const EventEditor = ({ event, token, onSaved, onCancel, onExpired }: Props) => {
         const id = nextId.current++
         setDays(values => [...values, { id, date: '' }])
       }}>{t(weekly ? 'add_weekday' : 'add_date')}</Button>}
+      <GroupFields value={groups} onChange={setGroups} />
       <Error onClose={() => setError('')}>{error}</Error>
       <div className={styles.actions}>
         <Button type="submit" isSmall isLoading={busy}>{t('save')}</Button>

@@ -11,6 +11,7 @@ pub struct Model {
     pub created_at: DateTime,
     pub availability: Json,
     pub tentative: Option<Json>,
+    pub group_id: Option<String>,
     #[sea_orm(primary_key, auto_increment = false)]
     pub event_id: String,
 }

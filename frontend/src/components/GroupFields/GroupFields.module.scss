@@ -1,0 +1,23 @@
+.fields {
+  border: 0;
+  margin: 16px 0;
+  padding: 0;
+  min-inline-size: 0;
+
+  legend {
+    font-weight: 600;
+    padding: 0;
+  }
+
+  p {
+    margin: 4px 0 8px;
+  }
+}
+
+.row {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin-bottom: 8px;
+}

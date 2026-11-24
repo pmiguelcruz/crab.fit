@@ -1,15 +1,17 @@
+use std::collections::HashSet;
+
 use axum::{
     extract::{self, Path},
     http::StatusCode,
     Json,
 };
-use common::{Adaptor, Event, SlotSize};
-use rand::{seq::SliceRandom, thread_rng, Rng};
+use common::{Adaptor, Event, EventGroup, SlotSize};
+use rand::{distributions::Alphanumeric, seq::SliceRandom, thread_rng, Rng};
 use regex::Regex;
 
 use crate::{
     errors::ApiError,
-    payloads::{ApiResult, EventInput, EventResponse},
+    payloads::{ApiResult, EventInput, EventResponse, GroupEdit},
     State,
 };
 
@@ -80,6 +82,7 @@ pub async fn create_event<A: Adaptor>(
     if name.chars().count() > 255 || name.chars().any(char::is_control) {
         return Err(ApiError::InvalidInput);
     }
+    let groups = validate_groups(input.groups, &[]).ok_or(ApiError::InvalidInput)?;
 
     let mut times = input.times;
     times.sort_unstable();
@@ -113,6 +116,7 @@ pub async fn create_event<A: Adaptor>(
             times,
             timezone: input.timezone,
             slot_size: input.slot_size,
+            groups,
         })
         .await
         .map_err(ApiError::AdaptorError)?;
@@ -127,6 +131,52 @@ pub async fn create_event<A: Adaptor>(
 }
 
 // Generate a random name based on an adjective and a crab species
+pub(super) fn validate_groups(
+    input: Vec<GroupEdit>,
+    existing: &[EventGroup],
+) -> Option<Vec<EventGroup>> {
+    if input.len() > 20 {
+        return None;
+    }
+    let mut reserved: HashSet<_> = existing.iter().map(|group| group.id.clone()).collect();
+    let mut ids = HashSet::new();
+    let mut names = HashSet::new();
+    let mut groups = Vec::with_capacity(input.len());
+    let mut rng = thread_rng();
+    for group in input {
+        let name = group.name.trim();
+        if name.is_empty()
+            || name.chars().count() > 64
+            || name.chars().any(char::is_control)
+            || !names.insert(name.to_lowercase())
+        {
+            return None;
+        }
+        let id = if let Some(id) = group.id {
+            if !existing.iter().any(|group| group.id == id) || !ids.insert(id.clone()) {
+                return None;
+            }
+            id
+        } else {
+            loop {
+                let id: String = (&mut rng)
+                    .sample_iter(Alphanumeric)
+                    .take(12)
+                    .map(char::from)
+                    .collect();
+                if reserved.insert(id.clone()) {
+                    break id;
+                }
+            }
+        };
+        groups.push(EventGroup {
+            id,
+            name: name.to_owned(),
+        });
+    }
+    Some(groups)
+}
+
 fn generate_name() -> String {
     let adjectives: Vec<String> =
         serde_json::from_slice(include_bytes!("../res/adjectives.json")).unwrap();

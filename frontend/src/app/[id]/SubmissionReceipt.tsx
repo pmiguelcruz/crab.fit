@@ -47,11 +47,13 @@ const SubmissionReceipt = ({ event, submission, timezone }: Props) => {
         })
     const slots = describe(submission.availability)
     const tentative = describe(submission.tentative ?? [])
+    const group = event.groups?.find(group => group.id === submission.group_id)
     const receipt = [
       t('submission.receipt_title'),
       t('submission.receipt_event', { name: event.name }),
       new URL(`/${encodeURIComponent(event.id)}`, location.origin).href,
       t('submission.receipt_participant', { name: submission.name }),
+      ...(group ? [t('teams.receipt', { group: group.name })] : []),
       t('submission.receipt_time', { time, timezone }),
       '',
       ...(slots.length ? slots : tentative.length ? [] : [t('submission.receipt_empty')]),

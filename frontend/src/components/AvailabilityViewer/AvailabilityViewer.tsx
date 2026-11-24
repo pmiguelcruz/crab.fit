@@ -9,7 +9,7 @@ import Content from '/src/components/Content/Content'
 import DayCalendar, { CalendarDayState } from '/src/components/DayCalendar/DayCalendar'
 import Legend from '/src/components/Legend/Legend'
 import SelectField from '/src/components/SelectField/SelectField'
-import { PersonResponse } from '/src/config/api'
+import { EventGroup, PersonResponse } from '/src/config/api'
 import { usePalette } from '/src/hooks/usePalette'
 import { useTranslation } from '/src/i18n/client'
 import { useStore } from '/src/stores'
@@ -22,11 +22,12 @@ import Skeleton from './components/Skeleton/Skeleton'
 interface AvailabilityViewerProps {
   times: string[]
   people: PersonResponse[]
+  groups?: EventGroup[]
   datesOnly?: boolean
   table?: ReturnType<typeof calculateTable>
 }
 
-const AvailabilityViewer = ({ times, people, datesOnly, table }: AvailabilityViewerProps) => {
+const AvailabilityViewer = ({ times, people, groups, datesOnly, table }: AvailabilityViewerProps) => {
   const { t, i18n } = useTranslation('event')
 
   const highlight = useStore(useSettingsStore, state => state.highlight)
@@ -177,6 +178,26 @@ const AvailabilityViewer = ({ times, people, datesOnly, table }: AvailabilityVie
 
       <span className={styles.info}>{t(datesOnly ? 'days.group_info' : 'group.info1')}</span>
       {anyTentative && <span className={styles.info}>{t(datesOnly ? 'tentative.days_help' : 'tentative.times_help')}</span>}
+
+      {!!groups?.length && <div className={styles.people} role="group" aria-label={t('teams.responses')}>
+        {groups.map(group => {
+          const members = people.filter(person => person.group_id === group.id).map(person => person.name)
+          const selected = !!members.length
+            && filteredPeople.length === members.length && members.every(name => filteredPeople.includes(name))
+          return <button
+            type="button"
+            className={makeClass(styles.person, selected && styles.personSelected)}
+            key={group.id}
+            disabled={!members.length}
+            aria-pressed={selected}
+            aria-label={t('teams.group_count', { group: group.name, count: members.length })}
+            onClick={() => {
+              setTempFocus(undefined)
+              setFilteredPeople(selected ? people.map(person => person.name) : members)
+            }}
+          >{group.name} · {members.length}</button>
+        })}
+      </div>}
 
       {people.length > 1 && <>
         <span className={styles.info}>{t('group.info2')}</span>

@@ -7,7 +7,7 @@ use axum::{
     Json, TypedHeader,
 };
 use base64::{engine::general_purpose, Engine};
-use common::{Adaptor, Event, Person};
+use common::{Adaptor, Event, EventGroup, Person};
 
 use crate::{
     errors::ApiError,
@@ -51,8 +51,12 @@ pub async fn get_people<A: Adaptor>(
     Ok(Json(
         people
             .into_iter()
-            .map(|person| active_response(person, &slots))
-            .filter(|person| !person.availability.is_empty() || !person.tentative.is_empty())
+            .map(|person| active_response(person, &slots, &event.groups))
+            .filter(|person| {
+                !person.availability.is_empty()
+                    || !person.tentative.is_empty()
+                    || person.group_id.is_some()
+            })
             .collect(),
     ))
 }
@@ -121,6 +125,7 @@ pub async fn get_person<A: Adaptor>(
                         created_at: chrono::Utc::now(),
                         availability: vec![],
                         tentative: vec![],
+                        group_id: None,
                     },
                 )
                 .await
@@ -144,7 +149,7 @@ pub async fn get_person<A: Adaptor>(
             PARTICIPANT_TTL,
         )
         .ok_or(ApiError::Unavailable)?;
-    let person = active_response(person, &available_slots(&event));
+    let person = active_response(person, &available_slots(&event), &event.groups);
     Ok((
         [(header::CACHE_CONTROL, "no-store")],
         Json(PersonLogin { person, token }),
@@ -195,6 +200,11 @@ pub async fn update_person<A: Adaptor>(
                 .iter()
                 .any(|time| !slots.contains(time) || firm.contains(time))
         })
+        || input
+            .group_id
+            .as_ref()
+            .and_then(|id| id.as_deref())
+            .is_some_and(|id| !has_group(&event.groups, id))
     {
         return Err(ApiError::InvalidInput);
     }
@@ -213,12 +223,17 @@ pub async fn update_person<A: Adaptor>(
     tentative.retain(|time| slots.contains(time) && !firm.contains(time));
     tentative.sort_unstable();
     tentative.dedup();
+    let group_id = input
+        .group_id
+        .unwrap_or(person.group_id)
+        .filter(|id| has_group(&event.groups, id));
     let person = adaptor
         .upsert_person(
             event_id,
             Person {
                 availability,
                 tentative,
+                group_id,
                 ..person
             },
         )
@@ -292,10 +307,19 @@ fn available_slots(event: &Event) -> HashSet<String> {
         .collect()
 }
 
-fn active_response(person: Person, slots: &HashSet<String>) -> PersonResponse {
+fn has_group(groups: &[EventGroup], id: &str) -> bool {
+    groups.iter().any(|group| group.id == id)
+}
+
+fn active_response(
+    person: Person,
+    slots: &HashSet<String>,
+    groups: &[EventGroup],
+) -> PersonResponse {
     let mut response = PersonResponse::from(person);
     response.availability.retain(|time| slots.contains(time));
     response.tentative.retain(|time| slots.contains(time));
+    response.group_id = response.group_id.filter(|id| has_group(groups, id));
     response
 }
 

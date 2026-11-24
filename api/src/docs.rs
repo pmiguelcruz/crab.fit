@@ -26,6 +26,8 @@ use utoipa::{
         payloads::EventResponse,
         payloads::PersonResponse,
         payloads::EventInput,
+        payloads::GroupEdit,
+        payloads::GroupResponse,
         payloads::PersonInput,
         payloads::PersonLogin,
         payloads::Submission,

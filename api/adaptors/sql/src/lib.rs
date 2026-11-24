@@ -2,7 +2,7 @@ use std::{env, error::Error};
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use common::{Adaptor, Event, Person, Stats};
+use common::{Adaptor, Event, EventGroup, Person, Stats};
 use entity::{
     event, person,
     prelude::{Event as EventEntity, Person as PersonEntity, Stats as StatsEntity},
@@ -80,6 +80,7 @@ impl Adaptor for SqlAdaptor {
             created_at: Set(person.created_at.naive_utc()),
             availability: Set(serde_json::to_value(person.availability).unwrap_or(json!([]))),
             tentative: Set(Some(json!(person.tentative))),
+            group_id: Set(person.group_id),
             event_id: Set(event_id.clone()),
         };
 
@@ -132,6 +133,7 @@ impl Adaptor for SqlAdaptor {
             times: Set(serde_json::to_value(event.times).unwrap_or(json!([]))),
             timezone: Set(event.timezone),
             slot_size: Set(event.slot_size.map(|size| size.as_str().to_owned())),
+            groups: Set(Some(json!(event.groups))),
         }
         .insert(&self.db)
         .await?
@@ -153,6 +155,7 @@ impl Adaptor for SqlAdaptor {
         id: String,
         name: String,
         times: Option<Vec<String>>,
+        groups: Option<Vec<EventGroup>>,
     ) -> Result<Option<Event>, Self::Error> {
         let Some(event) = EventEntity::find_by_id(id).one(&self.db).await? else {
             return Ok(None);
@@ -161,6 +164,9 @@ impl Adaptor for SqlAdaptor {
         event.name = Set(name);
         if let Some(times) = times {
             event.times = Set(json!(times));
+        }
+        if let Some(groups) = groups {
+            event.groups = Set(Some(json!(groups)));
         }
         Ok(Some(event.update(&self.db).await?.into()))
     }
@@ -269,6 +275,10 @@ impl From<event::Model> for Event {
             times: serde_json::from_value(value.times).unwrap_or(vec![]),
             timezone: value.timezone,
             slot_size: value.slot_size.and_then(|size| size.parse().ok()),
+            groups: value
+                .groups
+                .and_then(|groups| serde_json::from_value(groups).ok())
+                .unwrap_or_default(),
         }
     }
 }
@@ -284,6 +294,7 @@ impl From<person::Model> for Person {
                 .tentative
                 .and_then(|times| serde_json::from_value(times).ok())
                 .unwrap_or_default(),
+            group_id: value.group_id,
         }
     }
 }

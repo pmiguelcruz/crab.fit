@@ -8,10 +8,11 @@ import { Temporal } from '@js-temporal/polyfill'
 import Button from '/src/components/Button/Button'
 import CalendarField from '/src/components/CalendarField/CalendarField'
 import { default as ErrorAlert } from '/src/components/Error/Error'
+import GroupFields, { validGroupNames } from '/src/components/GroupFields/GroupFields'
 import SelectField from '/src/components/SelectField/SelectField'
 import TextField from '/src/components/TextField/TextField'
 import TimeRangeField from '/src/components/TimeRangeField/TimeRangeField'
-import { createEvent, EventResponse } from '/src/config/api'
+import { createEvent, EventResponse, GroupEdit } from '/src/config/api'
 import { useTranslation } from '/src/i18n/client'
 import timezones from '/src/res/timezones.json'
 import useRecentsStore from '/src/stores/recentsStore'
@@ -44,6 +45,7 @@ interface CreateFormProps {
 
 const CreateForm = ({ noRedirect, onCreated }: CreateFormProps) => {
   const { t } = useTranslation('home')
+  const { t: eventText } = useTranslation('event')
   const { push } = useRouter()
 
   const addRecent = useRecentsStore(state => state.addRecent)
@@ -60,6 +62,7 @@ const CreateForm = ({ noRedirect, onCreated }: CreateFormProps) => {
   const [customize, setCustomize] = useState(false)
   const [windowMode, setWindowMode] = useState<'shared' | 'perDay'>('shared')
   const [windows, setWindows] = useState<Record<string, TimeWindow[]>>({})
+  const [groups, setGroups] = useState<GroupEdit[]>([])
 
   const [isLoading, setIsLoading] = useState(false)
   const [createdEvent, setCreatedEvent] = useState<EventResponse>()
@@ -75,6 +78,7 @@ const CreateForm = ({ noRedirect, onCreated }: CreateFormProps) => {
       if (dates.length === 0) {
         return setError(t('form.errors.no_dates'))
       }
+      if (!validGroupNames(groups)) return setError(eventText('teams.invalid'))
       const times: string[] = []
       if (slotSize === 'day') {
         times.push(...new Set(dates))
@@ -103,7 +107,7 @@ const CreateForm = ({ noRedirect, onCreated }: CreateFormProps) => {
       }
       if (!times.length) return setError(t('form.errors.no_times'))
 
-      const newEvent = await createEvent({ name, times, timezone, slot_size: slotSize }).catch(e => {
+      const newEvent = await createEvent({ name, times, timezone, slot_size: slotSize, groups }).catch(e => {
         console.error(e)
         throw new Error('Failed to create event')
       })
@@ -184,6 +188,7 @@ const CreateForm = ({ noRedirect, onCreated }: CreateFormProps) => {
       />
     </>}
 
+    <GroupFields value={groups} onChange={setGroups} />
     <ErrorAlert onClose={() => setError(undefined)}>{error}</ErrorAlert>
 
     <div className={styles.buttonWrapper}>

@@ -1,5 +1,5 @@
 use axum::Json;
-use common::{Event, Person, SlotSize, Stats};
+use common::{Event, EventGroup, Person, SlotSize, Stats};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -14,6 +14,21 @@ pub struct EventInput {
     pub slot_size: Option<SlotSize>,
     pub times: Vec<String>,
     pub timezone: String,
+    #[serde(default)]
+    /// Optional names of respondent groups. IDs are assigned when the poll is created.
+    pub groups: Vec<GroupEdit>,
+}
+
+#[derive(Deserialize, ToSchema)]
+pub struct GroupEdit {
+    pub id: Option<String>,
+    pub name: String,
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct GroupResponse {
+    pub id: String,
+    pub name: String,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -26,6 +41,8 @@ pub struct EventResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[schema(value_type = Option<String>)]
     pub slot_size: Option<SlotSize>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub groups: Vec<GroupResponse>,
 }
 
 impl From<Event> for EventResponse {
@@ -37,6 +54,11 @@ impl From<Event> for EventResponse {
             timezone: value.timezone,
             slot_size: value.slot_size,
             created_at: value.created_at.timestamp(),
+            groups: value
+                .groups
+                .into_iter()
+                .map(|EventGroup { id, name }| GroupResponse { id, name })
+                .collect(),
         }
     }
 }
@@ -64,6 +86,8 @@ pub struct PersonResponse {
     pub availability: Vec<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub tentative: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub group_id: Option<String>,
     pub created_at: i64,
 }
 
@@ -73,6 +97,7 @@ impl From<Person> for PersonResponse {
             name: value.name,
             availability: value.availability,
             tentative: value.tentative,
+            group_id: value.group_id,
             created_at: value.created_at.timestamp(),
         }
     }
@@ -82,12 +107,24 @@ impl From<Person> for PersonResponse {
 pub struct PersonInput {
     pub availability: Vec<String>,
     pub tentative: Option<Vec<String>>,
+    /// Omit to keep the current group. Set to null to clear it.
+    #[serde(default, deserialize_with = "group_choice")]
+    #[schema(value_type = Option<String>, nullable)]
+    pub group_id: Option<Option<String>>,
+}
+
+// Omission preserves the group when an older client edits availability.
+fn group_choice<'de, D: serde::Deserializer<'de>>(
+    value: D,
+) -> Result<Option<Option<String>>, D::Error> {
+    Option::deserialize(value).map(Some)
 }
 
 #[derive(Deserialize)]
 pub struct EventEdit {
     pub name: String,
     pub times: Option<Vec<String>>,
+    pub groups: Option<Vec<GroupEdit>>,
 }
 
 #[derive(Deserialize)]
