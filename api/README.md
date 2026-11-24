@@ -21,6 +21,20 @@ Some adaptors require environment variables to be set. You can specify them in a
 > **Note**
 > `memory-adaptor` is the default if no features are specified. Ensure you specify a different adaptor when deploying.
 
+### Docker
+
+Build the API image from this directory. The Docker build and API checks use
+Rust 1.92.0. The image uses Google Datastore by default. To connect it to a
+SQL database, build with `STORAGE_ADAPTOR=sql-adaptor`.
+
+```sh
+docker build -t crabfit-api .
+docker build --build-arg STORAGE_ADAPTOR=sql-adaptor -t crabfit-api:sql .
+```
+
+Provide `FRONTEND_URL` and the selected adaptor's environment variables when
+starting the container. Set `ADMIN_PIN` to enable event management.
+
 ### Adding an adaptor
 
 See [adding an adaptor](adaptors/README.md#adding-an-adaptor) in the adaptors readme.

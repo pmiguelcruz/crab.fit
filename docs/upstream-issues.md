@@ -29,15 +29,15 @@ On November 23, 2026, the upstream repository had 56 open issues. This records t
 - A poll can have named respondent groups. Participants can choose a group when submitting, and results show a count and filter for each group. Admins can rename groups without losing assignments. Chromium and WebKit passed poll creation, group submission, filtering, and rename checks. [#358](https://github.com/GRA0007/crab.fit/issues/358)
 - Esperanto is available in the language picker. The fork includes the community translations and Esperanto strings for the new features. WebKit displayed the translated create form, poll, and group results. [#336](https://github.com/GRA0007/crab.fit/issues/336)
 - The entire French heading uses a face that supports the accented glyph. Chromium displayed “CRÉER UN” and reported the same font family for the whole heading. [#345](https://github.com/GRA0007/crab.fit/issues/345)
+- MySQL 8.4 creates and migrates the three event and participant timestamp columns to DATETIME. A legacy poll and response kept their UTC timestamps and availability, and new votes saved in both fresh and migrated databases. [#355](https://github.com/GRA0007/crab.fit/issues/355)
+- The Docker build uses Rust 1.92.0 and matches the Debian builder and runtime releases. On Linux ARM64 both adaptor images built and resolved their shared libraries, including OpenSSL for SQL. The SQL container started against MySQL and saved and returned a vote. [#315](https://github.com/GRA0007/crab.fit/issues/315), [#305](https://github.com/GRA0007/crab.fit/issues/305)
 
 ## Code changed, with verification or coverage pending
 
 - The fork distinguishes API outages from missing events and shares the current host. A Chromium fixture verified that retrying a recovered poll reloads it and a missing poll still shows its own error page. The original hosted failures remain unverified. [#356](https://github.com/GRA0007/crab.fit/issues/356), [#328](https://github.com/GRA0007/crab.fit/issues/328)
-- A MySQL migration converts the legacy TIMESTAMP columns to DATETIME. Live MySQL migration remains unverified. [#355](https://github.com/GRA0007/crab.fit/issues/355)
 - Calendar import uses the true range and checks errors and partial-slot conflicts. A live authenticated Google Calendar test remains open. [#343](https://github.com/GRA0007/crab.fit/issues/343)
-- The Docker builder and runtime use the same Debian release and the runtime installs libssl3. A container build and start remain unverified. [#315](https://github.com/GRA0007/crab.fit/issues/315), [#305](https://github.com/GRA0007/crab.fit/issues/305)
 - In-memory cleanup preserves participants for active polls. The older hosted data-loss report remains unverified. [#303](https://github.com/GRA0007/crab.fit/issues/303)
-- The unpacked Manifest V3 extension can use a self-hosted URL. Verified in Chromium. Firefox, the Android client, and Chrome Web Store publication remain open. [#335](https://github.com/GRA0007/crab.fit/issues/335), [#115](https://github.com/GRA0007/crab.fit/issues/115)
+- The unpacked browser extension saved a self-hosted URL and loaded its poll creation form in Chromium and Firefox. The Android client and Chrome Web Store listing remain open. [#335](https://github.com/GRA0007/crab.fit/issues/335), [#115](https://github.com/GRA0007/crab.fit/issues/115)
 
 ## Open work
 

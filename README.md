@@ -24,6 +24,18 @@ For more information on how to translate, visit the [translating wiki page](http
 
 Crab Fit is fully open-source, and you can get your own version running by following the [self-hosting guide](https://github.com/GRA0007/crab.fit/wiki/Self%E2%80%90hosting).
 
+### Browser extension
+
+The extension in `browser-extension` can open Crab Fit using your own
+frontend URL. After loading it, open its options and save your frontend
+origin, such as `https://meet.example.org`.
+
+- Chrome and Chromium accept the folder through **Load unpacked** on
+  `chrome://extensions` with Developer mode enabled.
+- Firefox accepts its `manifest.json` through **Load Temporary Add-on**
+  under **This Firefox** on `about:debugging`. Firefox keeps the temporary
+  installation until it restarts.
+
 ### Contributing
 
 Visit the [contributing guide](./CONTRIBUTING.md) for info on running locally and submitting pull requests.

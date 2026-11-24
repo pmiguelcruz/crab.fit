@@ -1,13 +1,16 @@
-# This dockerfile builds the API and runs it on a minimal container with the Datastore adaptor
+# Build the API for the configured storage adaptor. Hosted builds use Datastore by default.
 
-FROM rust:bookworm AS builder
+FROM rust:1.92.0-bookworm AS toolchain
+
+FROM toolchain AS builder
+ARG STORAGE_ADAPTOR=datastore-adaptor
 
 WORKDIR /usr/src/app
 COPY . .
 # Will build and cache the binary and dependent crates in release mode
-RUN --mount=type=cache,target=/usr/local/cargo,from=rust:bookworm,source=/usr/local/cargo \
+RUN --mount=type=cache,target=/usr/local/cargo,from=toolchain,source=/usr/local/cargo \
     --mount=type=cache,target=target \
-    cargo build --locked --release --features datastore-adaptor && mv ./target/release/crabfit-api ./api
+    cargo build --locked --release --features "$STORAGE_ADAPTOR" && mv ./target/release/crabfit-api ./api
 
 # Runtime image
 FROM debian:bookworm-slim
