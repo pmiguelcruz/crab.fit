@@ -47,9 +47,11 @@ const loadCalendarClient = (key: string) => {
       const fail = () => reject(new Error('Could not initialize Google Calendar'))
       gapi.load('client', {
         callback: () => {
+          // Discovery is public. Apply the configured key to Calendar requests after loading it.
           gapi.client.init({
-            apiKey: key,
             discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'],
+          }).then(() => {
+            gapi.client.setApiKey(key)
           }).then(() => resolve(), reject)
         },
         onerror: fail,
@@ -70,6 +72,36 @@ interface Calendar {
   color?: string
   isChecked: boolean
 }
+
+const listCalendars = async (isActive: () => boolean) => {
+  const calendars = new Map<string, Calendar>()
+  const cursors = new Set<string>()
+  let pageToken: string | undefined
+  do {
+    const { result } = await gapi.client.calendar.calendarList.list({
+      minAccessRole: 'freeBusyReader',
+      pageToken,
+    })
+    if (!isActive()) return []
+    for (const item of result.items ?? []) {
+      calendars.set(item.id, {
+        id: item.id,
+        name: item.summary,
+        description: item.description,
+        color: item.backgroundColor,
+        isChecked: item.primary === true,
+      })
+    }
+    pageToken = result.nextPageToken
+    if (pageToken) {
+      if (cursors.has(pageToken)) throw new Error('Google repeated a calendar list page')
+      cursors.add(pageToken)
+    }
+  } while (pageToken)
+  return Array.from(calendars.values())
+}
+
+const calendarsPerFreeBusyRequest = 50
 
 const login = (
   callback: (tokenResponse: google.accounts.oauth2.TokenResponse) => void,
@@ -110,39 +142,34 @@ const GoogleCalendar = ({ timezone, timeStart, timeEnd, times, interval, onImpor
   const [authorizing, setAuthorizing] = useState(false)
   const [calendars, setCalendars] = useState<Calendar[]>()
   const [error, setError] = useState('')
-  const activeAuthorization = useRef<symbol | null>(null)
+  const activeRequest = useRef<symbol | null>(null)
 
-  useEffect(() => () => { activeAuthorization.current = null }, [])
+  useEffect(() => () => { activeRequest.current = null }, [])
 
   const authorize = () => {
     const attempt = Symbol()
-    activeAuthorization.current = attempt
+    const isActive = () => activeRequest.current === attempt
+    activeRequest.current = attempt
     setAuthorizing(true)
     const finish = () => {
-      activeAuthorization.current = null
+      activeRequest.current = null
       setAuthorizing(false)
     }
     const failed = () => {
-      if (activeAuthorization.current !== attempt) return
+      if (!isActive()) return
       setError(t('you.integration.google_sign_in_failed'))
       finish()
     }
     try {
       // Google opens the consent popup synchronously from the button's click.
       login(async response => {
-        if (activeAuthorization.current !== attempt) return
+        if (!isActive()) return
         if (response.error !== undefined || !response.access_token) return failed()
         try {
           gapi.client.setToken({ access_token: response.access_token })
-          const { result } = await gapi.client.calendar.calendarList.list({ minAccessRole: 'freeBusyReader' })
-          if (activeAuthorization.current !== attempt) return
-          setCalendars(result.items?.map(item => ({
-            id: item.id,
-            name: item.summary,
-            description: item.description,
-            color: item.backgroundColor,
-            isChecked: item.primary === true,
-          })) ?? [])
+          const entries = await listCalendars(isActive)
+          if (!isActive()) return
+          setCalendars(entries)
           finish()
         } catch {
           failed()
@@ -179,39 +206,53 @@ const GoogleCalendar = ({ timezone, timeStart, timeEnd, times, interval, onImpor
   const epochTimes = useMemo(() => times.map(t => parseSpecificDate(t).epochMilliseconds), [times])
 
   const [isLoadingAvailability, setIsLoadingAvailability] = useState(false)
+  const selected = calendars?.filter(calendar => calendar.isChecked)
   const importAvailability = async () => {
-    const selected = calendars?.filter(calendar => calendar.isChecked)
-    if (!selected?.length) return
+    if (!selected?.length || isLoadingAvailability) return
 
+    const attempt = Symbol()
+    const isActive = () => activeRequest.current === attempt
+    activeRequest.current = attempt
     setError('')
     setIsLoadingAvailability(true)
     try {
-      const { result } = await gapi.client.calendar.freebusy.query({
-        timeMin: timeStart.toInstant().toString(),
-        timeMax: timeEnd.toInstant().toString(),
-        timeZone: timezone,
-        items: selected.map(calendar => ({ id: calendar.id })),
-      })
-      const busy = selected.flatMap(({ id }) => {
-        const calendar = result.calendars?.[id]
-        if (!calendar || calendar.errors?.length) throw new Error('Calendar data unavailable')
-        return (calendar.busy ?? []).map(period => {
-          const start = Date.parse(period.start)
-          const end = Date.parse(period.end)
-          if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) {
-            throw new Error('Calendar data unavailable')
-          }
-          return { start, end }
+      const timeMin = timeStart.toInstant().toString()
+      const timeMax = timeEnd.toInstant().toString()
+      const busy: { start: number; end: number }[] = []
+      for (let index = 0; index < selected.length; index += calendarsPerFreeBusyRequest) {
+        const items = selected.slice(index, index + calendarsPerFreeBusyRequest).map(({ id }) => ({ id }))
+        const { result } = await gapi.client.calendar.freebusy.query({
+          timeMin,
+          timeMax,
+          timeZone: timezone,
+          calendarExpansionMax: calendarsPerFreeBusyRequest,
+          items,
         })
-      })
+        if (!isActive()) return
+        for (const { id } of items) {
+          const calendar = result.calendars?.[id]
+          if (!calendar || calendar.errors?.length) throw new Error('Calendar data unavailable')
+          for (const period of calendar.busy ?? []) {
+            const start = Date.parse(period.start)
+            const end = Date.parse(period.end)
+            if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) {
+              throw new Error('Calendar data unavailable')
+            }
+            if (end > start) busy.push({ start, end })
+          }
+        }
+      }
       const durationMs = interval * 60 * 1000
       onImport(times.filter((_, i) => !busy.some(period =>
         epochTimes[i] < period.end && epochTimes[i] + durationMs > period.start,
       )))
     } catch {
-      setError(t('you.integration.failed'))
+      if (isActive()) setError(t('you.integration.failed'))
     } finally {
-      setIsLoadingAvailability(false)
+      if (isActive()) {
+        activeRequest.current = null
+        setIsLoadingAvailability(false)
+      }
     }
   }
 
@@ -244,11 +285,13 @@ const GoogleCalendar = ({ timezone, timeStart, timeEnd, times, interval, onImpor
         {!calendars.every(c => c.isChecked) && <button
           className={styles.linkButton}
           type="button"
+          disabled={isLoadingAvailability}
           onClick={() => setCalendars(calendars.map(c => ({ ...c, isChecked: true })))}
         >{t('you.select_all')}</button>}
         {calendars.every(c => c.isChecked) && <button
           className={styles.linkButton}
           type="button"
+          disabled={isLoadingAvailability}
           onClick={() => setCalendars(calendars.map(c => ({ ...c, isChecked: false })))}
         >{t('you.select_none')}</button>}
       </div>
@@ -259,6 +302,7 @@ const GoogleCalendar = ({ timezone, timeStart, timeEnd, times, interval, onImpor
           id={calendar.id}
           style={{ accentColor: calendar.color }}
           checked={calendar.isChecked}
+          disabled={isLoadingAvailability}
           onChange={() => setCalendars(calendars.map(c => c.id === calendar.id ? { ...c, isChecked: !c.isChecked } : c))}
         />
         <label className={styles.name} htmlFor={calendar.id} title={calendar.description}>{allowUrlToWrap(calendar.name)}</label>
@@ -268,8 +312,8 @@ const GoogleCalendar = ({ timezone, timeStart, timeEnd, times, interval, onImpor
       <Button
         isSmall
         isLoading={isLoadingAvailability}
-        disabled={isLoadingAvailability}
-        onClick={() => importAvailability()}
+        disabled={isLoadingAvailability || !selected?.length}
+        onClick={importAvailability}
       >{t('you.integration.button')}</Button>
     </div>}
 
