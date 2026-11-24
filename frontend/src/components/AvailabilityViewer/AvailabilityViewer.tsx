@@ -40,6 +40,7 @@ const AvailabilityViewer = ({ times, people, datesOnly, table }: AvailabilityVie
     available: string
     date: string
     people: string[]
+    overlapping?: boolean
   }>()
   const { refs, floatingStyles } = useFloating({
     middleware: [offset(6), flip(), shift()],
@@ -100,12 +101,14 @@ const AvailabilityViewer = ({ times, people, datesOnly, table }: AvailabilityVie
               ...cell.minute === 30 && { borderTopStyle: 'dotted' },
             } as React.CSSProperties}
             aria-label={peopleHere.join(', ')}
+            data-overlap={cell.overlapping}
             onMouseEnter={e => {
               setTooltip({
                 anchor: e.currentTarget,
                 available: `${peopleHere.length} / ${filteredPeople.length} ${t('available')}`,
                 date: cell.label,
                 people: peopleHere,
+                overlapping: cell.overlapping,
               })
             }}
             onClick={() => {
@@ -243,6 +246,7 @@ const AvailabilityViewer = ({ times, people, datesOnly, table }: AvailabilityVie
         >
           <h3>{tooltip.available}</h3>
           <span>{tooltip.date}</span>
+          {tooltip.overlapping !== undefined && <span>{t(tooltip.overlapping ? 'overlap.inside' : 'overlap.outside')}</span>}
           {!!filteredPeople.length && <div>
             {tooltip.people.map(person => <span key={person}>{person}</span>)}
             {filteredPeople.filter(p => !tooltip.people.includes(p)).map(person =>

@@ -1,5 +1,6 @@
 import { Temporal } from '@js-temporal/polyfill'
 
+import { AwakeOverlap, awakeOverlapChecker } from '/src/utils/awakeOverlap'
 import { calculateColumns } from '/src/utils/calculateColumns'
 import { calculateRows } from '/src/utils/calculateRows'
 import { convertTimesToDates } from '/src/utils/convertTimesToDates'
@@ -12,9 +13,10 @@ export interface CalculateTableArgs {
   timezone: string
   weekStart?: 0 | 1
   interval?: number
+  overlay?: AwakeOverlap
 }
 
-export const calculateTable = ({ times, locale, timeFormat, timezone, weekStart = 0, interval = 15 }: CalculateTableArgs) => {
+export const calculateTable = ({ times, locale, timeFormat, timezone, weekStart = 0, interval = 15, overlay }: CalculateTableArgs) => {
   const choices = [...new Set(times)]
   const dates = convertTimesToDates(choices, timezone, weekStart)
   type Slot = { date: Temporal.ZonedDateTime; serialized: string }
@@ -34,12 +36,16 @@ export const calculateTable = ({ times, locale, timeFormat, timezone, weekStart 
     dateKeys.set(day, slots)
   })
 
+  const checkOverlap = overlay && awakeOverlapChecker(overlay, interval)
+  const overlapping = checkOverlap && new Set(choices.filter((_, index) => checkOverlap(dates[index].toInstant())))
+
   const rows = calculateRows(dates.map(date => date.toPlainTime()), repeats, interval)
   const columns = calculateColumns(dates)
   const isSpecificDates = times[0]?.length === 13
   const clockFormat = { timeStyle: 'short', hourCycle: timeFormat === '12h' ? 'h12' : 'h23' } as const
 
   return {
+    overlapCount: overlapping?.size,
     rows: rows.map((row, index) => row && (index === 0 || row.end || row.time.minute === 0
       || interval !== 15 || repeats.has(row.time.toString())) ? {
         label: row.time.toLocaleString(locale, clockFormat),
@@ -65,9 +71,20 @@ export const calculateTable = ({ times, locale, timeFormat, timezone, weekStart 
         return {
           serialized,
           minute: date.minute,
+          overlapping: overlapping?.has(serialized),
           label: `${dateLabel}, ${clock}${ambiguity}`,
         }
       }),
     } : null),
   }
+}
+
+export interface CalculateTableRequest {
+  args: CalculateTableArgs
+  revision: number
+}
+
+export interface CalculateTableReply {
+  table: ReturnType<typeof calculateTable>
+  revision: number
 }

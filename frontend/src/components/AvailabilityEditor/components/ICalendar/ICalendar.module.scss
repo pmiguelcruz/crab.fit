@@ -1,0 +1,21 @@
+.panel {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 6px;
+  background: var(--surface);
+
+  h3 {
+    margin-block: 0 8px;
+  }
+}
+
+.description {
+  font-size: .9rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

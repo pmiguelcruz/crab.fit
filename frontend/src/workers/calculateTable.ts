@@ -1,5 +1,6 @@
-import { calculateTable, CalculateTableArgs } from '/src/utils'
+import { calculateTable, CalculateTableReply, CalculateTableRequest } from '/src/utils/calculateTable'
 
-self.onmessage = (e: MessageEvent<CalculateTableArgs>) => {
-  self.postMessage(calculateTable(e.data))
+self.onmessage = ({ data: { args, revision } }: MessageEvent<CalculateTableRequest>) => {
+  const result: CalculateTableReply = { table: calculateTable(args), revision }
+  self.postMessage(result)
 }

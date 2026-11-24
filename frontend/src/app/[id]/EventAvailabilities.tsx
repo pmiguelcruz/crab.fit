@@ -11,12 +11,14 @@ import Error from '/src/components/Error/Error'
 import Login from '/src/components/Login/Login'
 import Section from '/src/components/Section/Section'
 import SelectField from '/src/components/SelectField/SelectField'
+import TimeZoneOverlap, { OverlapSettings } from '/src/components/TimeZoneOverlap/TimeZoneOverlap'
 import { EventResponse, getPeople, PersonLogin, PersonResponse, removeOwnResponse, Submission, updatePerson } from '/src/config/api'
 import { useCalendarSettings } from '/src/hooks/useCalendarSettings'
 import { useTranslation } from '/src/i18n/client'
 import timezones from '/src/res/timezones.json'
 import useRecentsStore from '/src/stores/recentsStore'
-import { calculateTable, expandTimes, makeClass } from '/src/utils'
+import { calculateTable, CalculateTableReply, expandTimes, makeClass } from '/src/utils'
+import { clockMinutes } from '/src/utils/awakeOverlap'
 import { slotMinutes } from '/src/utils/slotSize'
 
 import styles from './page.module.scss'
@@ -48,27 +50,48 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
   const [tab, setTab] = useState<'group' | 'you'>('group')
   const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone)
 
-  // Web worker for calculating the heatmap table
-  const tableWorker = useRef<Worker>()
+  const [overlap, setOverlap] = useState<OverlapSettings>({ zones: [], from: '08:00', to: '22:00' })
+  const wakeStart = clockMinutes(overlap.from)
+  const wakeEnd = clockMinutes(overlap.to)
+  const invalidWindow = wakeStart === undefined || wakeEnd === undefined || wakeStart === wakeEnd
+  const comparison = useMemo(() => {
+    const zones = overlap.zones.filter(zone => zone !== timezone)
+    if (!zones.length || wakeStart === undefined || wakeEnd === undefined || wakeStart === wakeEnd) return
+    return { zones: [timezone, ...zones], start: wakeStart, end: wakeEnd }
+  }, [overlap.zones, timezone, wakeStart, wakeEnd])
 
-  // Calculate table (using a web worker if available)
+  const changeTimezone = (zone: string) => {
+    setTimezone(zone)
+    setOverlap(current => ({ ...current, zones: current.zones.filter(candidate => candidate !== zone) }))
+  }
+
+  const tableWorker = useRef<Worker>()
+  const tableRevision = useRef(0)
   const [table, setTable] = useState<ReturnType<typeof calculateTable>>()
 
+  useEffect(() => () => {
+    tableWorker.current?.terminate()
+    tableWorker.current = undefined
+  }, [])
+
   useEffect(() => {
-    if (event && !datesOnly && expandedTimes.length > 0) {
-      if (!tableWorker.current) {
-        tableWorker.current = window.Worker ? new Worker(new URL('/src/workers/calculateTable', import.meta.url)) : undefined
-      }
-      const args = { times: expandedTimes, locale: i18n.language, timeFormat, timezone, weekStart, interval }
-      if (tableWorker.current) {
-        tableWorker.current.onmessage = (e: MessageEvent<ReturnType<typeof calculateTable>>) => setTable(e.data)
-        tableWorker.current.postMessage(args)
-        setTable(undefined)
-      } else {
-        setTable(calculateTable(args))
-      }
+    if (!event || datesOnly || !expandedTimes.length) return
+    if (!tableWorker.current && window.Worker) {
+      tableWorker.current = new Worker(new URL('/src/workers/calculateTable', import.meta.url))
     }
-  }, [datesOnly, event, expandedTimes, i18n.language, interval, timeFormat, timezone, weekStart])
+
+    const args = { times: expandedTimes, locale: i18n.language, timeFormat, timezone, weekStart, interval, overlay: comparison }
+    const revision = ++tableRevision.current
+    if (tableWorker.current) {
+      tableWorker.current.onmessage = (message: MessageEvent<CalculateTableReply>) => {
+        if (message.data.revision === tableRevision.current) setTable(message.data.table)
+      }
+      tableWorker.current.postMessage({ args, revision })
+      setTable(undefined)
+    } else {
+      setTable(calculateTable(args))
+    }
+  }, [comparison, datesOnly, event, expandedTimes, i18n.language, interval, timeFormat, timezone, weekStart])
 
   // Add this event to recents
   const addRecent = useRecentsStore(state => state.addRecent)
@@ -171,7 +194,7 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
             id="timezone"
             isInline
             value={timezone}
-            onChange={event => setTimezone(event.currentTarget.value)}
+            onChange={event => changeTimezone(event.currentTarget.value)}
             options={timezones}
           />
 
@@ -182,7 +205,7 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
               _<strong>{{timezone: event.timezone}}</strong>
               _<a href="#" onClick={e => {
                 e.preventDefault()
-                setTimezone(event.timezone)
+                changeTimezone(event.timezone)
               }}>_</a>_
             </Trans>
           </p>}
@@ -201,11 +224,18 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
                 _<strong>{{timezone: Intl.DateTimeFormat().resolvedOptions().timeZone}}</strong>
                 _<a href="#" onClick={e => {
                   e.preventDefault()
-                  setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone)
+                  changeTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone)
                 }}>_</a>_
               </Trans>
             </p>
           )}
+          {event && <TimeZoneOverlap
+            timezone={timezone}
+            settings={overlap}
+            onChange={setOverlap}
+            count={comparison ? table?.overlapCount : 0}
+            invalid={invalidWindow}
+          />}
         </>}
       </Content>
     </Section>

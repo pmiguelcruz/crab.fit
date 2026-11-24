@@ -10,6 +10,7 @@ import { calculateTable, makeClass, parseSpecificDate } from '/src/utils'
 
 import styles from './AvailabilityEditor.module.scss'
 import GoogleCalendar from './components/GoogleCalendar/GoogleCalendar'
+import ICalendar from './components/ICalendar/ICalendar'
 import RecentEvents from './components/RecentEvents/RecentEvents'
 import viewerStyles from '../AvailabilityViewer/AvailabilityViewer.module.scss'
 import Skeleton from '../AvailabilityViewer/components/Skeleton/Skeleton'
@@ -56,6 +57,7 @@ const AvailabilityEditor = ({ eventId, times, timezone, datesOnly, interval = 15
   // Selection keyboard shortcuts
   useEffect(() => {
     const handleKeydown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLElement && e.target.closest('input, textarea, select, [contenteditable="true"]')) return
       if ((e.metaKey || e.ctrlKey) && (e.key === 'a' || e.key === 'i')) {
         e.preventDefault()
         if (e.shiftKey && e.key === 'a') selectNone()
@@ -77,14 +79,21 @@ const AvailabilityEditor = ({ eventId, times, timezone, datesOnly, interval = 15
         <Button isSmall onClick={selectInvert} title="Ctrl + I (⌘ I)">{t('you.select_invert')}</Button>
       </div>
     </Content>
-    {dateBounds && <Content>
+    {(dateBounds || (datesOnly && times[0]?.length === 10)) && <Content>
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-        <GoogleCalendar
+        {dateBounds && <GoogleCalendar
           timezone={timezone}
           timeStart={dateBounds.start}
           timeEnd={dateBounds.end}
           interval={interval}
           times={times}
+          onImport={onChange}
+        />}
+        <ICalendar
+          times={times}
+          datesOnly={datesOnly}
+          timezone={timezone}
+          interval={interval}
           onImport={onChange}
         />
         <RecentEvents
@@ -140,7 +149,8 @@ const AvailabilityEditor = ({ eventId, times, timezone, datesOnly, interval = 15
 
                   return <div
                     key={y}
-                    title={cell.label}
+                    title={cell.overlapping === undefined ? cell.label : `${cell.label} · ${t(cell.overlapping ? 'overlap.inside' : 'overlap.outside')}`}
+                    data-overlap={cell.overlapping}
                     className={makeClass(viewerStyles.time, selecting.length === 0 && viewerStyles.editable)}
                     style={{
                       touchAction: 'none',

@@ -61,6 +61,23 @@
     "clipboard_message": "People available on {{date}}"
   },
 
+  "overlap": {
+    "title": "Compare time zones",
+    "instructions": "Compare {{zone}} with other time zones. The same awake hours apply in each zone.",
+    "additional": "Additional time zone",
+    "choose": "Choose a time zone",
+    "add": "Add time zone",
+    "remove": "Remove",
+    "remove_zone": "Remove {{zone}}",
+    "from": "Awake from",
+    "to": "Awake until",
+    "invalid": "Choose two different times to show the overlap.",
+    "calculating": "Calculating overlap…",
+    "result_one": "{{count}} slot outlined within awake hours in all zones.",
+    "result_other": "{{count}} slots outlined within awake hours in all zones.",
+    "inside": "Within awake hours in all zones",
+    "outside": "Outside awake hours in at least one zone"
+  },
   "days": {
     "calendar": "Poll dates",
     "month": "Month",
@@ -98,6 +115,22 @@
     "google_cal": "Sync with Google Calendar",
     "outlook_cal": "Sync with Outlook Calendar",
     "recent_event": "Sync with a recent event",
+    "icalendar": {
+      "title": "Import iCalendar",
+      "file": "File",
+      "url": "Calendar link",
+      "choose_file": "Calendar file",
+      "calendar_url": "Calendar export URL",
+      "url_description": "Use an HTTP, HTTPS, or webcal link that returns an iCalendar file.",
+      "day_info": "Days with any busy time are omitted. The import replaces your current draft.",
+      "imported_one": "Imported {{count}} available choice into your draft.",
+      "imported_other": "Imported {{count}} available choices into your draft.",
+      "invalid_url": "Enter a calendar export URL without a username or password.",
+      "url_failed": "Could not read that calendar link. You can import its downloaded calendar file.",
+      "invalid_file": "Could not read that iCalendar data. Check the file or export link.",
+      "limit": "This calendar is too large or has too many recurring events to import.",
+      "timeout": "Calendar import timed out."
+    },
     "integration": {
       "logout": "log out",
       "close": "close",

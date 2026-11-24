@@ -1,0 +1,28 @@
+.panel {
+  margin-block-start: 12px;
+
+  summary {
+    cursor: pointer;
+    font-weight: bold;
+  }
+}
+
+.fields,
+.zones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 12px;
+}
+
+.zones {
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+}
