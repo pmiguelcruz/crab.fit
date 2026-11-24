@@ -15,7 +15,7 @@ Run this command from `browser-extension` to package the extension at the
 current Git revision.
 
 ```sh
-git archive --format=zip --output=crab-fit-1.4.zip HEAD:browser-extension \
+git -C .. archive --format=zip --output="$PWD/crab-fit-1.4.zip" HEAD:browser-extension \
   manifest.json options.html options.js origin.js popup.css popup.html popup.js res
 ```
 

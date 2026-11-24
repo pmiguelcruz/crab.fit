@@ -24,10 +24,18 @@ APK at `app/build/outputs/apk/release/app-release-unsigned.apk` is unsigned.
 
 ## F-Droid packaging
 
-The project includes English listing text, an icon, and Android screenshots
-in the repository's [Fastlane metadata](../fastlane/metadata/android/en-US).
-An F-Droid build recipe can use `subdir: android`, `gradle: yes` and a published
-git revision for the version in `app/build.gradle`. The repository uses
-GPL-3.0. F-Droid inclusion requires its separate submission and review.
-[Inclusion policy](https://f-droid.org/docs/Inclusion_Policy/)
-[Build metadata reference](https://f-droid.org/docs/Build_Metadata_Reference/)
+The [F-Droid recipe](./fdroid/io.github.pmiguelcruz.crabfit.yml) pins the
+source revision for version 1.0. The repository's
+[Fastlane metadata](../fastlane/metadata/android/en-US) supplies the English
+listing text, icon, and screenshots.
+
+Copy the recipe into the `metadata` directory of a local fdroiddata checkout
+to run F-Droid's checks.
+
+```shell
+fdroid lint -f io.github.pmiguelcruz.crabfit
+fdroid build --test --stop --scan-binary io.github.pmiguelcruz.crabfit:1
+```
+
+F-Droid inclusion requires submission and review.
+[Submission guide](https://f-droid.org/docs/Submitting_to_F-Droid_Quick_Start_Guide/)

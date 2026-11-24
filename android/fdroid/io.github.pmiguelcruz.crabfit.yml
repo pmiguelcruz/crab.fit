@@ -1,0 +1,23 @@
+Categories:
+  - Calendar & Agenda
+License: GPL-3.0-only
+SourceCode: https://github.com/pmiguelcruz/crab.fit
+
+AutoName: Crab Fit Companion
+
+RepoType: git
+Repo: https://github.com/pmiguelcruz/crab.fit.git
+
+Builds:
+  - versionName: '1.0'
+    versionCode: 1
+    commit: 7de31e0bcab1127643b741796d4a85dc71a81e64
+    subdir: android
+    gradle:
+      - yes
+    output: app/build/outputs/apk/release/app-release-unsigned.apk
+
+AutoUpdateMode: None
+UpdateCheckMode: None
+CurrentVersion: '1.0'
+CurrentVersionCode: 1
