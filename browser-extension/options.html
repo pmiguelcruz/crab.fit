@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Crab Fit extension settings</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body { font: 1rem system-ui, sans-serif; margin: 2rem auto; padding: 0 1rem; max-width: 32rem; }
+      label, input { display: block; }
+      input { box-sizing: border-box; width: 100%; margin: .5rem 0 1rem; padding: .5rem; font: inherit; }
+      button { font: inherit; font-weight: 600; padding: .5rem 1rem; background: #f79e00; color: #111; border: 0; border-radius: 3px; }
+    </style>
+  </head>
+  <body>
+    <h1>Crab Fit extension settings</h1>
+    <form>
+      <label for="origin">Crab Fit website</label>
+      <p id="origin-help">Enter the frontend address of your Crab Fit instance or leave this blank to use crab.fit.</p>
+      <input type="url" id="origin" placeholder="https://crab.fit" aria-describedby="origin-help">
+      <button type="submit">Save</button>
+      <p id="status" role="status"></p>
+    </form>
+    <script type="module" src="options.js"></script>
+  </body>
+</html>

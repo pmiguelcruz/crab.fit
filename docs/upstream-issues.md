@@ -19,16 +19,18 @@ On November 23, 2026, the upstream repository had 56 open issues. This records t
 - Group filters can show everyone, no one, or one participant. New settings use the language defaults. [#324](https://github.com/GRA0007/crab.fit/issues/324), [#322](https://github.com/GRA0007/crab.fit/issues/322)
 - The SQL adaptor documentation explains when migrations run and how to verify an upgrade on a copy. [#319](https://github.com/GRA0007/crab.fit/issues/319)
 - Admin duplication creates a new event link with the same schedule and no participant responses. [#288](https://github.com/GRA0007/crab.fit/issues/288)
+- The calendar scrolls on both axes and keeps date headings visible. Verified in a 390-pixel-wide WebKit viewport. [#353](https://github.com/GRA0007/crab.fit/issues/353), [#118](https://github.com/GRA0007/crab.fit/issues/118)
+- Buttons use a regular CSS shadow. WebKit passed poll creation, participant sign-in, submission, and receipt download. [#300](https://github.com/GRA0007/crab.fit/issues/300)
 
 ## Code changed, with verification or coverage pending
 
 - The fork distinguishes API failure from a missing event and shares the correct host. The original hosted reports remain unverified. [#356](https://github.com/GRA0007/crab.fit/issues/356), [#328](https://github.com/GRA0007/crab.fit/issues/328)
 - A MySQL migration converts the legacy TIMESTAMP columns to DATETIME. Live MySQL migration remains unverified. [#355](https://github.com/GRA0007/crab.fit/issues/355)
-- The calendar has a bounded two-axis scroll region with sticky date headings. Physical mobile-device testing remains open. [#353](https://github.com/GRA0007/crab.fit/issues/353), [#118](https://github.com/GRA0007/crab.fit/issues/118)
-- Accented heading text uses the fallback face. Buttons use a regular CSS shadow in place of the Safari-sensitive 3D layer. [#345](https://github.com/GRA0007/crab.fit/issues/345), [#300](https://github.com/GRA0007/crab.fit/issues/300)
+- Accented heading text uses the fallback face. Locale-specific visual verification remains open. [#345](https://github.com/GRA0007/crab.fit/issues/345)
 - Calendar import uses the true range and checks errors and partial-slot conflicts. A live authenticated Google Calendar test remains open. [#343](https://github.com/GRA0007/crab.fit/issues/343)
 - The Docker builder and runtime use the same Debian release and the runtime installs libssl3. A container build and start remain unverified. [#315](https://github.com/GRA0007/crab.fit/issues/315), [#305](https://github.com/GRA0007/crab.fit/issues/305)
 - In-memory cleanup preserves participants for active polls. The older hosted data-loss report remains unverified. [#303](https://github.com/GRA0007/crab.fit/issues/303)
+- The unpacked Manifest V3 extension can use a self-hosted URL. Verified in Chromium. Firefox, the Android client, and Chrome Web Store publication remain open. [#335](https://github.com/GRA0007/crab.fit/issues/335), [#115](https://github.com/GRA0007/crab.fit/issues/115)
 
 ## Open work
 
@@ -37,4 +39,4 @@ On November 23, 2026, the upstream repository had 56 open issues. This records t
 - Calendar-file import and import from iCalendar or CalDAV URLs. [#245](https://github.com/GRA0007/crab.fit/issues/245)
 - The external connection failure needs a reproducible case or diagnostics from that deployment. [#354](https://github.com/GRA0007/crab.fit/issues/354)
 - Esperanto translation files are absent from the upstream checkout. [#336](https://github.com/GRA0007/crab.fit/issues/336)
-- Self-hosted URLs in the browser and Android clients, Chrome Web Store availability, and F-Droid publication. Those client and distribution changes remain open. [#335](https://github.com/GRA0007/crab.fit/issues/335), [#115](https://github.com/GRA0007/crab.fit/issues/115), [#33](https://github.com/GRA0007/crab.fit/issues/33)
+- F-Droid publication needs the Android project and store submission. [#33](https://github.com/GRA0007/crab.fit/issues/33)
