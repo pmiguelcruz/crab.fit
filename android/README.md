@@ -24,8 +24,9 @@ APK at `app/build/outputs/apk/release/app-release-unsigned.apk` is unsigned.
 
 ## F-Droid packaging
 
-The project includes English Fastlane listing text in `fastlane/metadata`. An
-F-Droid build recipe can use `subdir: android`, `gradle: yes` and a published
+The project includes English listing text, an icon, and Android screenshots
+in the repository's [Fastlane metadata](../fastlane/metadata/android/en-US).
+An F-Droid build recipe can use `subdir: android`, `gradle: yes` and a published
 git revision for the version in `app/build.gradle`. The repository uses
 GPL-3.0. F-Droid inclusion requires its separate submission and review.
 [Inclusion policy](https://f-droid.org/docs/Inclusion_Policy/)

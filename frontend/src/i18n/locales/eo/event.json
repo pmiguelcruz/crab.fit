@@ -204,6 +204,8 @@
     "integration": {
       "logout": "elsaluti",
       "close": "fermi",
+      "google_continue": "Daŭrigi per Google",
+      "google_sign_in_failed": "Ne eblis konektiĝi al Google Calendar. Reprovu.",
       "info": "Importado anstataŭigas vian nunan malneton.",
       "failed": "Ne eblis legi disponeblon el la elektitaj kalendaroj. Reprovu.",
       "button": "Importi disponeblon"

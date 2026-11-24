@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import Script from 'next/script'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Temporal } from '@js-temporal/polyfill'
 
 import Button from '/src/components/Button/Button'
@@ -11,6 +10,58 @@ import { allowUrlToWrap, parseSpecificDate } from '/src/utils'
 import styles from './GoogleCalendar.module.scss'
 
 const [clientId, apiKey] = [process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID, process.env.NEXT_PUBLIC_GOOGLE_API_KEY]
+
+const scriptLoads = new Map<string, Promise<void>>()
+let calendarInitialization: Promise<void> | undefined
+
+const loadScript = (src: string) => {
+  const existing = scriptLoads.get(src)
+  if (existing) return existing
+  const load = new Promise<void>((resolve, reject) => {
+    const script = document.createElement('script')
+    script.src = src
+    script.async = true
+    const fail = () => {
+      window.clearTimeout(timeout)
+      script.remove()
+      reject(new Error('Could not load Google Calendar'))
+    }
+    const timeout = window.setTimeout(fail, 15000)
+    script.onload = () => {
+      window.clearTimeout(timeout)
+      resolve()
+    }
+    script.onerror = fail
+    document.head.append(script)
+  }).catch(error => {
+    scriptLoads.delete(src)
+    throw error
+  })
+  scriptLoads.set(src, load)
+  return load
+}
+
+const loadCalendarClient = (key: string) => {
+  calendarInitialization ??= loadScript('https://apis.google.com/js/api.js')
+    .then(() => new Promise<void>((resolve, reject) => {
+      const fail = () => reject(new Error('Could not initialize Google Calendar'))
+      gapi.load('client', {
+        callback: () => {
+          gapi.client.init({
+            apiKey: key,
+            discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'],
+          }).then(() => resolve(), reject)
+        },
+        onerror: fail,
+        timeout: 10000,
+        ontimeout: fail,
+      })
+    })).catch(error => {
+      calendarInitialization = undefined
+      throw error
+    })
+  return calendarInitialization
+}
 
 interface Calendar {
   id: string
@@ -55,66 +106,74 @@ const GoogleCalendar = ({ timezone, timeStart, timeEnd, times, interval, onImpor
   const { t } = useTranslation('event')
 
   // Prevent Google scripts from loading until button pressed
-  const [canLoad, setCanLoad] = useState(false)
-  const [identityReady, setIdentityReady] = useState(false)
-  const [calendarReady, setCalendarReady] = useState(false)
+  const [libraries, setLibraries] = useState<'idle' | 'loading' | 'ready'>('idle')
+  const [authorizing, setAuthorizing] = useState(false)
   const [calendars, setCalendars] = useState<Calendar[]>()
   const [error, setError] = useState('')
+  const activeAuthorization = useRef<symbol | null>(null)
 
-  const fail = useCallback(() => {
-    setError(t('you.integration.failed'))
-    setCanLoad(false)
-  }, [t])
+  useEffect(() => () => { activeAuthorization.current = null }, [])
 
-  const loadCalendar = () => {
-    if (calendarReady) return
-    gapi.load('client', {
-      callback: () => {
-        gapi.client.init({
-          apiKey,
-          discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'],
-        }).then(() => setCalendarReady(true)).catch(fail)
-      },
-      onerror: fail,
-      timeout: 10000,
-      ontimeout: fail,
-    })
-  }
-
-  useEffect(() => {
-    if (!canLoad) {
-      setCalendars(undefined)
-      return
+  const authorize = () => {
+    const attempt = Symbol()
+    activeAuthorization.current = attempt
+    setAuthorizing(true)
+    const finish = () => {
+      activeAuthorization.current = null
+      setAuthorizing(false)
     }
-    if (!identityReady || !calendarReady) return
-
-    let active = true
-    const failWhileActive = () => { if (active) fail() }
+    const failed = () => {
+      if (activeAuthorization.current !== attempt) return
+      setError(t('you.integration.google_sign_in_failed'))
+      finish()
+    }
     try {
+      // Google opens the consent popup synchronously from the button's click.
       login(async response => {
-        if (!active) return
-        if (response.error !== undefined || !response.access_token) return failWhileActive()
+        if (activeAuthorization.current !== attempt) return
+        if (response.error !== undefined || !response.access_token) return failed()
         try {
           gapi.client.setToken({ access_token: response.access_token })
           const { result } = await gapi.client.calendar.calendarList.list({ minAccessRole: 'freeBusyReader' })
-          if (active) {
-            setCalendars(result.items?.map(item => ({
-              id: item.id,
-              name: item.summary,
-              description: item.description,
-              color: item.backgroundColor,
-              isChecked: item.primary === true,
-            })) ?? [])
-          }
+          if (activeAuthorization.current !== attempt) return
+          setCalendars(result.items?.map(item => ({
+            id: item.id,
+            name: item.summary,
+            description: item.description,
+            color: item.backgroundColor,
+            isChecked: item.primary === true,
+          })) ?? [])
+          finish()
         } catch {
-          failWhileActive()
+          failed()
         }
-      }, failWhileActive)
+      }, failed)
     } catch {
-      failWhileActive()
+      failed()
     }
-    return () => { active = false }
-  }, [calendarReady, canLoad, fail, identityReady])
+  }
+
+  const close = () => {
+    gapi.client.setToken(null)
+    setCalendars(undefined)
+    setError('')
+  }
+
+  const start = () => {
+    setError('')
+    if (libraries === 'ready') {
+      authorize()
+      return
+    }
+    setLibraries('loading')
+    Promise.all([
+      loadScript('https://accounts.google.com/gsi/client'),
+      loadCalendarClient(apiKey),
+    ]).then(() => setLibraries('ready'), () => {
+      setError(t('you.integration.google_sign_in_failed'))
+      setLibraries('idle')
+    })
+  }
 
   // Process times so they can be checked quickly
   const epochTimes = useMemo(() => times.map(t => parseSpecificDate(t).epochMilliseconds), [times])
@@ -159,16 +218,14 @@ const GoogleCalendar = ({ timezone, timeStart, timeEnd, times, interval, onImpor
   return <>
     <ErrorAlert onClose={() => setError('')}>{error}</ErrorAlert>
     {!calendars && <Button
-      onClick={() => {
-        setError('')
-        setCanLoad(!canLoad)
-      }}
-      isLoading={canLoad}
+      onClick={start}
+      isLoading={libraries === 'loading' || authorizing}
+      disabled={libraries === 'loading' || authorizing}
       surfaceColor="#4286F5"
       shadowColor="#3367BD"
       icon={<GoogleIcon aria-hidden="true" />}
     >
-      {t('you.google_cal')}
+      {t(libraries === 'ready' ? 'you.integration.google_continue' : 'you.google_cal')}
     </Button>}
 
     {calendars && <div className={styles.wrapper}>
@@ -178,7 +235,8 @@ const GoogleCalendar = ({ timezone, timeStart, timeEnd, times, interval, onImpor
         (<button
           className={styles.linkButton}
           type="button"
-          onClick={() => setCanLoad(false)}
+          disabled={isLoadingAvailability}
+          onClick={close}
         >{t('you.integration.logout')}</button>)
       </p>
 
@@ -215,19 +273,6 @@ const GoogleCalendar = ({ timezone, timeStart, timeEnd, times, interval, onImpor
       >{t('you.integration.button')}</Button>
     </div>}
 
-    {/* Load google api scripts */}
-    {canLoad && <>
-      <Script
-        src="https://accounts.google.com/gsi/client"
-        onError={fail}
-        onReady={() => setIdentityReady(true)}
-      />
-      <Script
-        src="https://apis.google.com/js/api.js"
-        onError={fail}
-        onReady={loadCalendar}
-      />
-    </>}
   </>
 }
 

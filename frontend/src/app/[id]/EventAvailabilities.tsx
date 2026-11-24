@@ -66,9 +66,13 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
   const [submitError, setSubmitError] = useState('')
 
   const [tab, setTab] = useState<'group' | 'you'>('group')
-  const [timezone, setTimezone] = useState(event?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone)
+  // Use the same initial timezone on the server and in the browser.
+  const [timezone, setTimezone] = useState(event?.timezone ?? 'UTC')
+  const [localTimezone, setLocalTimezone] = useState<string>()
   useEffect(() => {
-    setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone)
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    setLocalTimezone(zone)
+    setTimezone(zone)
   }, [])
 
   const [overlap, setOverlap] = useState<OverlapSettings>({ zones: [], from: '08:00', to: '22:00' })
@@ -271,21 +275,15 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
             </Trans>
           </p>}
 
-          {((
-            Intl.DateTimeFormat().resolvedOptions().timeZone !== timezone
-            && (event?.timezone && event.timezone !== Intl.DateTimeFormat().resolvedOptions().timeZone)
-          ) || (
-            event?.timezone === undefined
-            && Intl.DateTimeFormat().resolvedOptions().timeZone !== timezone
-          )) && (
+          {localTimezone && localTimezone !== timezone && localTimezone !== event?.timezone && (
             <p>
               <Trans i18nKey="form.local_timezone" t={t} i18n={i18n}>
                 {/* eslint-disable-next-line */}
                 {/* @ts-ignore */}
-                _<strong>{{timezone: Intl.DateTimeFormat().resolvedOptions().timeZone}}</strong>
+                _<strong>{{timezone: localTimezone}}</strong>
                 _<a href="#" onClick={e => {
                   e.preventDefault()
-                  changeTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone)
+                  changeTimezone(localTimezone)
                 }}>_</a>_
               </Trans>
             </p>

@@ -39,6 +39,8 @@ It uses `https://crab.fit` by default. To use your own instance, open
   under **This Firefox** on `about:debugging`. Firefox keeps the temporary
   installation until it restarts.
 
+[Chrome Web Store package and listing](./browser-extension/store/README.md)
+
 ### Android companion
 
 The [Android companion](./android/README.md) saves and shares poll links, supports

@@ -213,6 +213,8 @@
     "integration": {
       "logout": "log out",
       "close": "close",
+      "google_continue": "Continue with Google",
+      "google_sign_in_failed": "Could not connect to Google Calendar. Try again.",
       "info": "Importing replaces your current draft.",
       "failed": "Could not read availability from the selected calendars. Try again.",
       "button": "Import availability"
