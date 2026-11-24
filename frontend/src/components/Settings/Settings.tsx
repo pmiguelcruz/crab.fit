@@ -71,6 +71,18 @@ const Settings = () => {
 
         {store && <>
           <ToggleField
+            label={t('options.theme.label')}
+            name="theme"
+            options={{
+              'System': t('options.theme.options.System'),
+              'Light': t('options.theme.options.Light'),
+              'Dark': t('options.theme.options.Dark'),
+            }}
+            value={store.theme ?? 'System'}
+            onChange={value => store.setTheme(value)}
+          />
+
+          <ToggleField
             label={t('options.weekStart.label')}
             name="weekStart"
             options={{
@@ -90,18 +102,6 @@ const Settings = () => {
             }}
             value={timeFormat}
             onChange={value => store.setTimeFormat(value)}
-          />
-
-          <ToggleField
-            label={t('options.theme.label')}
-            name="theme"
-            options={{
-              'System': t('options.theme.options.System'),
-              'Light': t('options.theme.options.Light'),
-              'Dark': t('options.theme.options.Dark'),
-            }}
-            value={store.theme ?? 'System'}
-            onChange={value => store.setTheme(value)}
           />
 
           <SelectField
