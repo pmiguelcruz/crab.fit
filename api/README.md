@@ -108,6 +108,26 @@ someone changes a vote, or a one-time update when a response or confirmed
 attendance target is reached. Pending updates can be grouped into one
 email. SMTP failures are retried, and each email includes a stop link.
 
+### Shared availability profiles
+
+Set `AVAILABILITY_PROFILE_DB` to a private, writable SQLite file on persistent
+storage. This enables the **Shared availability** controls on poll pages and
+**Set final choice** in the admin interface. Keep the file alongside the
+event database when backing up a self-hosted installation.
+
+Participants sign in to each poll before linking its response with a profile
+key. Linking lets edits in one poll update overlapping choices in other
+linked polls. Timed choices use UTC intervals and can have different slot
+lengths. Dated times, recurring times, specific days, and recurring weekdays
+each keep their own availability. The profile key is retained by the browser
+after a successful link. It can be entered in another browser to use the
+same profile.
+
+Setting a final choice reserves it for linked participants who marked that
+choice available. The original poll keeps their responses and matching
+choices become unavailable in the participants' other linked polls. Clearing
+or removing the final choice releases its reservations.
+
 ### Self-hosted URLs and listening address
 
 Set the API's `FRONTEND_URL` to the browser-facing frontend origin, for example

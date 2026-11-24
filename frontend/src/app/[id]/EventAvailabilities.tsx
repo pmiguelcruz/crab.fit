@@ -13,16 +13,18 @@ import Section from '/src/components/Section/Section'
 import SelectField from '/src/components/SelectField/SelectField'
 import TextField from '/src/components/TextField/TextField'
 import TimeZoneOverlap, { OverlapSettings } from '/src/components/TimeZoneOverlap/TimeZoneOverlap'
-import { EventResponse, getPeople, PersonLogin, PersonResponse, removeOwnResponse, Submission, updatePerson } from '/src/config/api'
+import { EventResponse, getPeople, PersonLogin, PersonResponse, type ProfileAction, removeOwnResponse, Submission, updatePerson } from '/src/config/api'
 import { useCalendarSettings } from '/src/hooks/useCalendarSettings'
 import { useTranslation } from '/src/i18n/client'
 import timezones from '/src/res/timezones.json'
 import useRecentsStore from '/src/stores/recentsStore'
 import { calculateTable, CalculateTableReply, expandTimes, makeClass } from '/src/utils'
 import { clockMinutes } from '/src/utils/awakeOverlap'
+import { formatPollChoice } from '/src/utils/formatPollChoice'
 import { slotMinutes } from '/src/utils/slotSize'
 
 import styles from './page.module.scss'
+import SharedAvailability, { rememberProfile } from './SharedAvailability'
 import SharedEmails from './SharedEmails'
 import SubmissionReceipt from './SubmissionReceipt'
 import VoteNotifications from './VoteNotifications'
@@ -47,6 +49,7 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
   const [tentative, setTentative] = useState<string[]>([])
   const [groupId, setGroupId] = useState('')
   const [sharedEmail, setSharedEmail] = useState<string>()
+  const [profile, setProfile] = useState<ProfileAction>()
   const emailField = useRef<HTMLInputElement>(null)
   const [submitting, setSubmitting] = useState(false)
   const [confirmRemoval, setConfirmRemoval] = useState(false)
@@ -55,7 +58,10 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
   const [submitError, setSubmitError] = useState('')
 
   const [tab, setTab] = useState<'group' | 'you'>('group')
-  const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone)
+  const [timezone, setTimezone] = useState(event?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone)
+  useEffect(() => {
+    setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone)
+  }, [])
 
   const [overlap, setOverlap] = useState<OverlapSettings>({ zones: [], from: '08:00', to: '22:00' })
   const wakeStart = clockMinutes(overlap.from)
@@ -114,12 +120,22 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
 
   // Refetch availabilities
   useEffect(() => {
-    if (tab === 'group' && event) {
+    if (tab !== 'group' || !event) return
+    let active = true
+    const refresh = () => {
       getPeople(event.id)
-        .then(setPeople)
+        .then(responses => { if (active) setPeople(responses) })
         .catch(console.warn)
     }
-  }, [tab])
+    refresh()
+    const timer = event.shared_availability_available ? window.setInterval(() => {
+      if (document.visibilityState === 'visible') refresh()
+    }, 12000) : undefined
+    return () => {
+      active = false
+      window.clearInterval(timer)
+    }
+  }, [event, tab])
 
   const submit = async () => {
     if (!event || !user || submitting) return
@@ -129,7 +145,9 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
     try {
       const submission = await updatePerson(event.id, user.name, {
         availability: draft, tentative, group_id: groupId || null, shared_email: sharedEmail?.trim() ?? null,
+        profile,
       }, user.token)
+      if (profile && profile.action !== 'unlink') rememberProfile(profile.key)
       setReceipt({ submission, timezone })
       addRecent({
         id: event.id,
@@ -144,12 +162,15 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
       setDraft([])
       setTentative([])
       setSharedEmail(undefined)
+      setProfile(undefined)
       setTab('group')
     } catch (e) {
       if (e instanceof Response && e.status === 401) {
         setUser(undefined)
         setTab('group')
         setSubmitError(t('submission.expired'))
+      } else if (e instanceof Response && e.status === 403) {
+        setSubmitError(t('profiles.key_required'))
       } else if (e instanceof Response && (e.status === 404 || e.status === 422)) {
         const invalidEmail = e.status === 422 && await e.text() === 'invalid_shared_email'
         setSubmitError(t(invalidEmail ? 'email.invalid' : 'submission.schedule_changed'))
@@ -172,6 +193,7 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
       setDraft([])
       setTentative([])
       setSharedEmail(undefined)
+      setProfile(undefined)
       setReceipt(undefined)
       setRemoved(true)
       setTab('group')
@@ -198,6 +220,7 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
           setTentative(person?.tentative ?? [])
           setGroupId(person?.group_id ?? '')
           setSharedEmail(person?.shared_email)
+          setProfile(undefined)
           setSubmitError('')
           setConfirmRemoval(false)
           setRemoved(false)
@@ -262,6 +285,11 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
       <Error onClose={() => setSubmitError('')}>{submitError}</Error>
       {removed && <p role="status">{t('submission.removed')}</p>}
       {event && receipt && <SubmissionReceipt event={event} {...receipt} />}
+      {event?.final_choice && <p className={styles.finalChoice}>
+        {t('profiles.final_choice', {
+          choice: formatPollChoice(event, event.final_choice, i18n.language, timezone),
+        })}
+      </p>}
       <div className={styles.tabs}>
         <button
           className={makeClass(
@@ -313,6 +341,17 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
         />
       </Content>}
       <Content>
+        {!!event?.shared_availability_available && <SharedAvailability
+          eventId={event.id}
+          user={user}
+          action={profile}
+          disabled={submitting}
+          onChange={setProfile}
+          onLoad={(availability, tentative) => {
+            setDraft(availability)
+            setTentative(tentative)
+          }}
+        />}
         <label className={styles.shareEmailChoice}>
           <input
             name="share-email"

@@ -43,12 +43,19 @@ pub async fn cleanup<A: Adaptor>(
         .await
         .map_err(ApiError::AdaptorError)?;
 
-    if let Some(notifications) = &state.notifications {
+    if state.notifications.is_some() || state.profiles.is_some() {
         match adaptor.list_events().await {
             Ok(events) => {
-                let active_ids: Vec<_> = events.into_iter().map(|event| event.id).collect();
-                if let Err(error) = notifications.prune(&active_ids).await {
-                    tracing::warn!(%error, "Could not remove expired poll notifications");
+                let active_ids = events.into_iter().map(|event| event.id).collect();
+                if let Some(notifications) = &state.notifications {
+                    if let Err(error) = notifications.prune(&active_ids).await {
+                        tracing::warn!(%error, "Could not remove expired poll notifications");
+                    }
+                }
+                if let Some(profiles) = &state.profiles {
+                    if let Err(error) = profiles.prune(&active_ids).await {
+                        tracing::warn!(?error, "Could not remove expired poll profile links");
+                    }
                 }
             }
             Err(error) => tracing::warn!(%error, "Could not identify expired poll notifications"),

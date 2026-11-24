@@ -12,7 +12,8 @@ use regex::Regex;
 use crate::{
     errors::ApiError,
     payloads::{ApiResult, EventInput, EventResponse, GroupEdit},
-    State,
+    routes::person::available_slots,
+    ApiState, State,
 };
 
 #[utoipa::path(
@@ -42,13 +43,28 @@ pub async fn get_event<A: Adaptor>(
         .map_err(ApiError::AdaptorError)?;
 
     match event {
-        Some(event) => {
-            let mut response = EventResponse::from(event);
-            response.notifications_available = state.notifications.is_some().then_some(true);
-            Ok(Json(response))
-        }
+        Some(event) => Ok(Json(event_response(&state, event).await?)),
         None => Err(ApiError::NotFound),
     }
+}
+
+pub(super) async fn event_response<A: Adaptor>(
+    state: &ApiState<A>,
+    event: Event,
+) -> Result<EventResponse, ApiError<A>> {
+    let choice = if let Some(profiles) = &state.profiles {
+        profiles
+            .final_choice(&event.id)
+            .await?
+            .filter(|choice| available_slots(&event).contains(choice))
+    } else {
+        None
+    };
+    let mut response = EventResponse::from(event);
+    response.notifications_available = state.notifications.is_some().then_some(true);
+    response.shared_availability_available = state.profiles.is_some().then_some(true);
+    response.final_choice = choice;
+    Ok(response)
 }
 
 #[utoipa::path(
@@ -73,7 +89,8 @@ pub async fn create_event<A: Adaptor>(
     {
         return Err(ApiError::InvalidInput);
     }
-    let adaptor = &state.lock().await.adaptor;
+    let state = state.lock().await;
+    let adaptor = &state.adaptor;
 
     // Get the current timestamp
     let now = chrono::offset::Utc::now();
@@ -132,7 +149,10 @@ pub async fn create_event<A: Adaptor>(
         .await
         .map_err(ApiError::AdaptorError)?;
 
-    Ok((StatusCode::CREATED, Json(event.into())))
+    Ok((
+        StatusCode::CREATED,
+        Json(event_response(&state, event).await?),
+    ))
 }
 
 // Generate a random name based on an adjective and a crab species

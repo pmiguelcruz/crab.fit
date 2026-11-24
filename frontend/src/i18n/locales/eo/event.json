@@ -102,6 +102,23 @@
     "invalid": "Kontrolu la retpoŝtadreson kaj nombron da homoj.",
     "failed": "Ne eblis ŝanĝi la sciigojn pri voĉdonoj. Reprovu."
   },
+  "profiles": {
+    "title": "Kundividita disponeblo",
+    "description": "Ligu respondon por sinkronigi kongruajn elektojn inter viaj voĉdonoj. Konservu vian profilŝlosilon por redakti ligitajn respondojn aŭ uzi alian retumilon.",
+    "key": "Ŝlosilo de kundividita profilo",
+    "show_key": "Montri la ŝlosilon",
+    "hide_key": "Kaŝi la ŝlosilon",
+    "create": "Krei kundividitan profilon",
+    "load": "Ŝargi kaj ligi",
+    "unlink": "Malligi ĉi tiun respondon",
+    "cancel": "Nuligi la ŝanĝon",
+    "loaded": "Ŝargis la kundividitajn elektojn. Sendu vian disponeblon por ligi ĉi tiun voĉdonon.",
+    "load_error": "Ne eblis ŝargi la kundividitan disponeblon. Reprovu.",
+    "pending_link": "Sendu vian disponeblon por konservi la ligon.",
+    "pending_unlink": "Sendu vian disponeblon por konservi ĉi tiun respondon aparte.",
+    "key_required": "Enigu la ĝustan profilŝlosilon por redakti ĉi tiun ligitan respondon.",
+    "final_choice": "Fina elekto · {{choice}}"
+  },
   "tentative": {
     "mode": "Marki disponeblon kiel",
     "firm": "Disponebla",

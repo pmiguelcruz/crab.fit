@@ -1,12 +1,15 @@
 use axum::{http::StatusCode, response::IntoResponse};
 use common::Adaptor;
 
+use crate::availability_profiles::ProfileError;
+
 pub enum ApiError<A: Adaptor> {
     AdaptorError(A::Error),
     NotFound,
     NotAuthorized,
     InvalidInput,
     InvalidSharedEmail,
+    ProfileKeyRequired,
     Unavailable,
 }
 
@@ -23,8 +26,28 @@ impl<A: Adaptor> IntoResponse for ApiError<A> {
             ApiError::InvalidSharedEmail => {
                 (StatusCode::UNPROCESSABLE_ENTITY, "invalid_shared_email").into_response()
             }
+            ApiError::ProfileKeyRequired => {
+                (StatusCode::FORBIDDEN, "shared_profile_key_required").into_response()
+            }
             ApiError::Unavailable => StatusCode::SERVICE_UNAVAILABLE.into_response(),
             ApiError::NotAuthorized => StatusCode::UNAUTHORIZED.into_response(),
+        }
+    }
+}
+
+impl<A: Adaptor> From<ProfileError> for ApiError<A> {
+    fn from(value: ProfileError) -> Self {
+        match value {
+            ProfileError::Unauthorized => Self::ProfileKeyRequired,
+            ProfileError::InvalidChoice => Self::InvalidInput,
+            ProfileError::Store(error) => {
+                tracing::warn!(%error, "Shared availability storage failed");
+                Self::Unavailable
+            }
+            ProfileError::Data(error) => {
+                tracing::warn!(%error, "Shared availability data could not be read");
+                Self::Unavailable
+            }
         }
     }
 }

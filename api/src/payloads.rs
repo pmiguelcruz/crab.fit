@@ -3,7 +3,7 @@ use common::{Event, EventGroup, Person, SlotSize, Stats};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-use crate::errors::ApiError;
+use crate::{availability_profiles::ProfileSubmission, errors::ApiError};
 
 pub type ApiResult<T, A> = Result<Json<T>, ApiError<A>>;
 
@@ -45,6 +45,10 @@ pub struct EventResponse {
     pub groups: Vec<GroupResponse>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub notifications_available: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub shared_availability_available: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub final_choice: Option<String>,
 }
 
 impl From<Event> for EventResponse {
@@ -57,6 +61,8 @@ impl From<Event> for EventResponse {
             slot_size: value.slot_size,
             created_at: value.created_at.timestamp(),
             notifications_available: None,
+            shared_availability_available: None,
+            final_choice: None,
             groups: value
                 .groups
                 .into_iter()
@@ -118,6 +124,8 @@ pub struct PersonInput {
     #[serde(default, deserialize_with = "optional_string_change")]
     #[schema(value_type = Option<String>, nullable)]
     pub shared_email: Option<Option<String>>,
+    #[schema(value_type = Option<Object>)]
+    pub profile: Option<ProfileSubmission>,
 }
 
 // An omitted field leaves existing data in place. An explicit null removes it.
@@ -151,6 +159,8 @@ pub struct PersonLogin {
     pub token: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub shared_email: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub profile_linked: Option<bool>,
 }
 
 #[derive(Serialize, ToSchema)]

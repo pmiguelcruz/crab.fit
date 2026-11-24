@@ -23,8 +23,10 @@ use crate::adaptors::create_adaptor;
 use crate::docs::ApiDoc;
 
 mod adaptors;
+mod availability_profiles;
 mod docs;
 mod errors;
+mod local_database;
 mod notifications;
 mod payloads;
 mod routes;
@@ -35,6 +37,7 @@ pub struct ApiState<A> {
     sessions: sessions::Sessions,
     admin_pin: sessions::AdminPin,
     notifications: Option<Arc<notifications::Notifications>>,
+    profiles: Option<Arc<availability_profiles::AvailabilityProfiles>>,
 }
 
 pub type State<A> = extract::State<Arc<Mutex<ApiState<A>>>>;
@@ -64,6 +67,9 @@ async fn main() {
         sessions: sessions::Sessions::default(),
         admin_pin: sessions::AdminPin::new(env::var("ADMIN_PIN").ok()),
         notifications,
+        profiles: availability_profiles::AvailabilityProfiles::from_env()
+            .await
+            .expect("Could not configure shared availability profiles"),
     }));
 
     // CORS configuration
@@ -133,6 +139,14 @@ async fn main() {
         .route(
             "/event/:event_id/people/:person_name",
             patch(person::update_person).delete(person::delete_person),
+        )
+        .route(
+            "/event/:event_id/people/:person_name/profile",
+            post(person::preview_profile),
+        )
+        .route(
+            "/admin/events/:id/final-choice",
+            post(admin::set_final_choice),
         )
         .route("/tasks/cleanup", get(tasks::cleanup))
         .with_state(shared_state)

@@ -118,7 +118,7 @@
   }
 }
 
-.voteNotifications {
+.voteNotifications, .sharedAvailability {
   margin-bottom: 16px;
 
   summary {
@@ -129,4 +129,12 @@
   p:empty {
     margin: 0;
   }
+}
+
+.finalChoice {
+  background: var(--surface);
+  border-radius: 6px;
+  font-weight: 600;
+  padding: 12px;
+  text-align: center;
 }

@@ -10,8 +10,8 @@ use crate::{
     errors::ApiError,
     payloads::{ApiResult, EventEdit, EventResponse, PinInput, TokenResponse},
     routes::{
-        event::{valid_choices, validate_groups},
-        person::remove_person,
+        event::{event_response, valid_choices, validate_groups},
+        person::{available_slots, read_people, remove_person},
     },
     sessions::{Session, ADMIN_TTL},
     State,
@@ -67,10 +67,11 @@ pub async fn list_events<A: Adaptor>(
             .cmp(&a.created_at)
             .then_with(|| a.id.cmp(&b.id))
     });
-    Ok((
-        [(header::CACHE_CONTROL, "no-store")],
-        Json(events.into_iter().map(EventResponse::from).collect()),
-    ))
+    let mut response = Vec::with_capacity(events.len());
+    for event in events {
+        response.push(event_response(&state, event).await?);
+    }
+    Ok(([(header::CACHE_CONTROL, "no-store")], Json(response)))
 }
 
 pub async fn update_event<A: Adaptor>(
@@ -113,7 +114,46 @@ pub async fn update_event<A: Adaptor>(
         .await
         .map_err(ApiError::AdaptorError)?
         .ok_or(ApiError::NotFound)?;
-    Ok(Json(event.into()))
+    if let Some(profiles) = &state.profiles {
+        if profiles
+            .final_choice(&event.id)
+            .await?
+            .is_some_and(|choice| !available_slots(&event).contains(&choice))
+        {
+            profiles
+                .set_final_choice(&event, &available_slots(&event), None, &[])
+                .await?;
+        }
+    }
+    Ok(Json(event_response(&state, event).await?))
+}
+
+#[derive(serde::Deserialize)]
+pub struct FinalChoice {
+    choice: Option<String>,
+}
+
+pub async fn set_final_choice<A: Adaptor>(
+    extract::State(state): State<A>,
+    Path(id): Path<String>,
+    bearer: BearerHeader,
+    Json(input): Json<FinalChoice>,
+) -> ApiResult<EventResponse, A> {
+    let state = state.lock().await;
+    admin_token(&state.sessions, &bearer)?;
+    let profiles = state.profiles.as_ref().ok_or(ApiError::Unavailable)?;
+    let event = state
+        .adaptor
+        .get_event(id)
+        .await
+        .map_err(ApiError::AdaptorError)?
+        .ok_or(ApiError::NotFound)?;
+    let slots = available_slots(&event);
+    let (people, _) = read_people(&state, &event, &slots).await?;
+    profiles
+        .set_final_choice(&event, &slots, input.choice.as_deref(), &people)
+        .await?;
+    Ok(Json(event_response(&state, event).await?))
 }
 
 pub async fn delete_event<A: Adaptor>(
@@ -135,6 +175,11 @@ pub async fn delete_event<A: Adaptor>(
     if let Some(notifications) = &state.notifications {
         if let Err(error) = notifications.remove_event(&id).await {
             tracing::warn!(%error, "Could not remove deleted poll notifications");
+        }
+    }
+    if let Some(profiles) = &state.profiles {
+        if let Err(error) = profiles.remove_event(&id).await {
+            tracing::warn!(?error, "Could not remove deleted poll profile links");
         }
     }
     Ok(StatusCode::NO_CONTENT)

@@ -39,6 +39,7 @@ const Page = async () => {
         <h2>Information Collection and Use</h2>
         <P>If you choose to share your email address when submitting availability, anyone with the event link can copy it for calendar invitations. To stop sharing, sign in to that event, clear the sharing option, and submit your availability again.</P>
         <P>If you subscribe to vote notifications, your address is used to send the confirmation and the updates you request. Use the link in those emails to stop receiving notifications.</P>
+        <P>If you use a shared availability profile, the Service stores your availability so it can update the responses you link. Your profile key lets you edit linked responses and use the profile in another browser.</P>
         <P>The Service uses third party services that may collect information used to identify you.</P>
         <P>Links to privacy policies of the third party service providers used by the Service:</P>
         <Ul>

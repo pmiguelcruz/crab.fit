@@ -33,14 +33,23 @@ export const EventResponse = z.object({
   created_at: z.number(),
   groups: EventGroup.array().optional(),
   notifications_available: z.boolean().optional(),
+  shared_availability_available: z.boolean().optional(),
+  final_choice: z.string().optional(),
 })
 export type EventResponse = z.infer<typeof EventResponse>
+
+const ProfileAction = z.object({
+  action: z.enum(['create', 'link', 'unlink']),
+  key: z.string(),
+})
+export type ProfileAction = z.infer<typeof ProfileAction>
 
 export const PersonInput = z.object({
   availability: z.string().array(),
   tentative: z.string().array().optional(),
   group_id: z.string().nullable().optional(),
   shared_email: z.string().nullable().optional(),
+  profile: ProfileAction.optional(),
 })
 export type PersonInput = z.infer<typeof PersonInput>
 
@@ -88,6 +97,7 @@ const post = async <S extends z.Schema>(url: string, schema: S, input: unknown, 
 const PersonLogin = PersonResponse.extend({
   token: z.string(),
   shared_email: z.string().optional(),
+  profile_linked: z.boolean().optional(),
 })
 export type PersonLogin = z.infer<typeof PersonLogin>
 
@@ -113,6 +123,8 @@ export const signOutAdmin = (token: string) => remove('/admin/session', token)
 export const listEvents = (token: string) => get('/admin/events', EventResponse.array(), token)
 export const editEvent = (id: string, input: EventEdit, token: string) =>
   post(`/admin/events/${encodeURIComponent(id)}`, EventResponse, input, token, 'PATCH')
+export const setFinalChoice = (id: string, choice: string | null, token: string) =>
+  post(`/admin/events/${encodeURIComponent(id)}/final-choice`, EventResponse, { choice }, token)
 const adminPeoplePath = (id: string) => `/admin/events/${encodeURIComponent(id)}/people`
 export const listParticipants = (id: string, token: string) => get(adminPeoplePath(id), z.string().array(), token)
 export const removeParticipant = (id: string, name: string, token: string) =>
@@ -141,6 +153,11 @@ export const postVoteNotifications = async (
   if (!response.ok) throw response
 }
 export const getPerson = (eventId: string, personName: string, password?: string) => get(personPath(eventId, personName), PersonLogin, password && encodePassword(password))
+export const previewProfile = (eventId: string, personName: string, key: string, token: string) =>
+  post(`${personPath(eventId, personName)}/profile`, z.object({
+    availability: z.string().array(),
+    tentative: z.string().array(),
+  }), { key }, token)
 
 // Post
 export const createEvent = (input: EventInput) => post('/event', EventResponse, EventInput.parse(input))

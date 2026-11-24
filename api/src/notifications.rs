@@ -1,4 +1,4 @@
-use std::{env, error::Error, str::FromStr, sync::Arc, time::Duration};
+use std::{collections::HashSet, env, error::Error, str::FromStr, sync::Arc, time::Duration};
 
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use chrono::Utc;
@@ -9,10 +9,7 @@ use lettre::{
 use rand::{rngs::OsRng, Rng};
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
-use sqlx::{
-    sqlite::{SqliteConnectOptions, SqlitePoolOptions},
-    ConnectOptions, Sqlite, SqlitePool, Transaction,
-};
+use sqlx::{Sqlite, SqlitePool, Transaction};
 use url::Url;
 
 const VERIFICATION_EXPIRY: i64 = 24 * 60 * 60;
@@ -84,28 +81,11 @@ impl Notifications {
             return Err("FRONTEND_URL must be a frontend origin for vote notifications".into());
         }
 
-        let database_path = env::var("NOTIFICATION_DB")?;
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::OpenOptionsExt;
-            std::fs::OpenOptions::new()
-                .create(true)
-                .append(true)
-                .mode(0o600)
-                .open(&database_path)?;
-        }
-        let mut database_options = SqliteConnectOptions::new()
-            .filename(database_path)
-            .create_if_missing(true)
-            .foreign_keys(true);
-        database_options.disable_statement_logging();
-        let db = SqlitePoolOptions::new()
-            .max_connections(1)
-            .connect_with(database_options)
-            .await?;
-        sqlx::query(include_str!("notifications.sql"))
-            .execute(&db)
-            .await?;
+        let db = crate::local_database::open(
+            &env::var("NOTIFICATION_DB")?,
+            include_str!("notifications.sql"),
+        )
+        .await?;
         Ok(Some(Arc::new(Self {
             db,
             smtp,
@@ -201,7 +181,7 @@ impl Notifications {
         Ok(())
     }
 
-    pub async fn prune(&self, current_events: &[String]) -> Result<(), sqlx::Error> {
+    pub async fn prune(&self, current_events: &HashSet<String>) -> Result<(), sqlx::Error> {
         let mut tx = self.db.begin().await?;
         let mut subscribed_events: Vec<(String,)> =
             sqlx::query_as("SELECT DISTINCT event_id FROM subscriptions")
@@ -390,6 +370,7 @@ fn token_digest(value: &str) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sqlx::sqlite::SqlitePoolOptions;
 
     #[tokio::test]
     async fn confirmation_is_scoped_to_the_poll_and_thresholds_send_once() {

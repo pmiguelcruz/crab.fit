@@ -110,6 +110,23 @@
     "invalid": "Check the email address and number of people.",
     "failed": "Could not change vote notifications. Try again."
   },
+  "profiles": {
+    "title": "Shared availability",
+    "description": "Link a response to sync matching choices across your polls. Keep your profile key to edit linked responses or use another browser.",
+    "key": "Shared profile key",
+    "show_key": "Show key",
+    "hide_key": "Hide key",
+    "create": "Create a shared profile",
+    "load": "Load and link",
+    "unlink": "Unlink this response",
+    "cancel": "Cancel change",
+    "loaded": "Shared choices loaded. Submit availability to link this poll.",
+    "load_error": "Could not load shared availability. Try again.",
+    "pending_link": "Submit availability to save the link.",
+    "pending_unlink": "Submit availability to keep this response separate.",
+    "key_required": "Enter the correct shared profile key to edit this linked response.",
+    "final_choice": "Final choice · {{choice}}"
+  },
   "tentative": {
     "mode": "Mark availability as",
     "firm": "Available",

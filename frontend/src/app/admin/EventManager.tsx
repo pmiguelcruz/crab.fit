@@ -10,9 +10,11 @@ import Error from '/src/components/Error/Error'
 import Section from '/src/components/Section/Section'
 import { createEvent, deleteEvent, EventResponse, listEvents, signOutAdmin } from '/src/config/api'
 import { useTranslation } from '/src/i18n/client'
+import { formatPollChoice } from '/src/utils/formatPollChoice'
 
 import styles from './admin.module.scss'
 import EventEditor from './EventEditor'
+import FinalChoiceEditor from './FinalChoiceEditor'
 import Respondents from './Respondents'
 
 const EventManager = () => {
@@ -23,6 +25,7 @@ const EventManager = () => {
   const [editId, setEditId] = useState('')
   const [deleteId, setDeleteId] = useState('')
   const [respondentsId, setRespondentsId] = useState('')
+  const [finalChoiceId, setFinalChoiceId] = useState('')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
@@ -139,6 +142,9 @@ const EventManager = () => {
               <time dateTime={new Date(event.created_at * 1000).toISOString()}>
                 {new Date(event.created_at * 1000).toLocaleDateString(i18n.language)}
               </time>
+              {event.final_choice && <p>{t('final_choice_summary', {
+                choice: formatPollChoice(event, event.final_choice, i18n.language),
+              })}</p>}
             </div>
             <div className={styles.actions}>
               <Button isSmall isSecondary onClick={async () => {
@@ -154,16 +160,25 @@ const EventManager = () => {
               <Button isSmall isSecondary disabled={busy} aria-expanded={respondentsId === event.id} onClick={() => {
                 setEditId('')
                 setDeleteId('')
+                setFinalChoiceId('')
                 setRespondentsId(id => id === event.id ? '' : event.id)
               }}>{t('respondents')}</Button>
               <Button isSmall isSecondary disabled={busy || editId === event.id} onClick={() => {
                 setDeleteId('')
                 setRespondentsId('')
+                setFinalChoiceId('')
                 setEditId(event.id)
               }}>{t('edit')}</Button>
+              {event.shared_availability_available && <Button isSmall isSecondary disabled={busy || finalChoiceId === event.id} onClick={() => {
+                setEditId('')
+                setRespondentsId('')
+                setDeleteId('')
+                setFinalChoiceId(event.id)
+              }}>{t('final_choice')}</Button>}
               <Button isSmall isSecondary disabled={busy || deleteId === event.id} onClick={() => {
                 setEditId('')
                 setRespondentsId('')
+                setFinalChoiceId('')
                 setDeleteId(event.id)
               }}>{t('delete')}</Button>
             </div>
@@ -177,6 +192,17 @@ const EventManager = () => {
               setEvents(events => events?.map(row => row.id === updated.id ? updated : row))
               setEditId('')
               setMessage(t('saved', { name: updated.name }))
+            }}
+          />}
+          {token && finalChoiceId === event.id && <FinalChoiceEditor
+            event={event}
+            token={token}
+            onExpired={clearSession}
+            onCancel={() => setFinalChoiceId('')}
+            onSaved={updated => {
+              setEvents(events => events?.map(row => row.id === updated.id ? updated : row))
+              setFinalChoiceId('')
+              setMessage(t('final_choice_saved'))
             }}
           />}
           {token && respondentsId === event.id && <Respondents id={event.id} token={token} onExpired={clearSession} />}

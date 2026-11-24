@@ -11,11 +11,12 @@ use common::{Adaptor, Event, EventGroup, Person};
 use email_address::{EmailAddress, Options as EmailOptions};
 
 use crate::{
+    availability_profiles::ProfileSubmission,
     errors::ApiError,
     notifications::VoteProgress,
     payloads::{ApiResult, PersonInput, PersonLogin, PersonResponse, Submission},
     sessions::{Session, PARTICIPANT_TTL},
-    State,
+    ApiState, State,
 };
 
 #[utoipa::path(
@@ -36,19 +37,16 @@ pub async fn get_people<A: Adaptor>(
     extract::State(state): State<A>,
     Path(event_id): Path<String>,
 ) -> ApiResult<Vec<PersonResponse>, A> {
-    let adaptor = &state.lock().await.adaptor;
+    let state = state.lock().await;
 
-    let event = adaptor
-        .get_event(event_id.clone())
+    let event = state
+        .adaptor
+        .get_event(event_id)
         .await
         .map_err(ApiError::AdaptorError)?
         .ok_or(ApiError::NotFound)?;
     let slots = available_slots(&event);
-    let people = adaptor
-        .get_people(event_id)
-        .await
-        .map_err(ApiError::AdaptorError)?
-        .ok_or(ApiError::NotFound)?;
+    let (people, _) = read_people(&state, &event, &slots).await?;
 
     Ok(Json(
         people
@@ -78,14 +76,24 @@ pub async fn get_shared_emails<A: Adaptor>(
     extract::State(state): State<A>,
     Path(event_id): Path<String>,
 ) -> Result<([(header::HeaderName, &'static str); 1], Json<Vec<String>>), ApiError<A>> {
-    let people = state
-        .lock()
-        .await
-        .adaptor
-        .get_people(event_id)
-        .await
-        .map_err(ApiError::AdaptorError)?
-        .ok_or(ApiError::NotFound)?;
+    let state = state.lock().await;
+    let (people, _) = if state.profiles.is_some() {
+        let event = state
+            .adaptor
+            .get_event(event_id)
+            .await
+            .map_err(ApiError::AdaptorError)?
+            .ok_or(ApiError::NotFound)?;
+        read_people(&state, &event, &available_slots(&event)).await?
+    } else {
+        let people = state
+            .adaptor
+            .get_people(event_id)
+            .await
+            .map_err(ApiError::AdaptorError)?
+            .ok_or(ApiError::NotFound)?;
+        (people, HashSet::new())
+    };
     let emails: BTreeSet<_> = people
         .into_iter()
         .filter_map(|person| person.shared_email)
@@ -134,7 +142,7 @@ pub async fn get_person<A: Adaptor>(
         .map_err(ApiError::AdaptorError)?
         .ok_or(ApiError::NotFound)?;
 
-    let person = match existing_people
+    let mut person = match existing_people
         .into_iter()
         .find(|person| person.name.to_lowercase() == person_name.to_lowercase())
     {
@@ -176,6 +184,15 @@ pub async fn get_person<A: Adaptor>(
         }
     };
 
+    let slots = available_slots(&event);
+    let profile_linked = if let Some(profiles) = &state.profiles {
+        profiles
+            .hydrate(&event, &slots, std::slice::from_mut(&mut person))
+            .await?
+            .contains(&person.name)
+    } else {
+        false
+    };
     let token = state
         .sessions
         .issue(
@@ -187,13 +204,14 @@ pub async fn get_person<A: Adaptor>(
         )
         .ok_or(ApiError::Unavailable)?;
     let shared_email = person.shared_email.clone();
-    let person = active_response(person, &available_slots(&event), &event.groups);
+    let person = active_response(person, &slots, &event.groups);
     Ok((
         [(header::CACHE_CONTROL, "no-store")],
         Json(PersonLogin {
             person,
             token,
             shared_email,
+            profile_linked: profile_linked.then_some(true),
         }),
     ))
 }
@@ -262,11 +280,10 @@ pub async fn update_person<A: Adaptor>(
     availability.sort_unstable();
     availability.dedup();
 
-    let mut people = adaptor
-        .get_people(event_id.clone())
-        .await
-        .map_err(ApiError::AdaptorError)?
-        .ok_or(ApiError::NotFound)?;
+    let (mut people, linked) = read_people(&state, &event, &slots).await?;
+    if linked.contains(&person_name) && input.profile.is_none() {
+        return Err(ApiError::ProfileKeyRequired);
+    }
     let index = people
         .iter()
         .position(|person| person.name == person_name)
@@ -285,21 +302,39 @@ pub async fn update_person<A: Adaptor>(
         .filter(|id| has_group(&event.groups, id));
     let shared_email = submitted_email.unwrap_or(person.shared_email);
     let submitted_at = chrono::Utc::now().timestamp();
-    let person = adaptor
-        .upsert_person(
-            event_id,
-            Person {
-                availability,
-                tentative,
-                group_id,
-                shared_email,
-                submitted_at: Some(submitted_at),
-                ..person
-            },
-        )
-        .await
-        .map_err(ApiError::AdaptorError)?
-        .ok_or(ApiError::NotFound)?;
+    let mut person = Person {
+        availability,
+        tentative,
+        group_id,
+        shared_email,
+        submitted_at: Some(submitted_at),
+        ..person
+    };
+    match input.profile {
+        Some(ProfileSubmission::Unlink { key }) => {
+            let profiles = state.profiles.as_ref().ok_or(ApiError::Unavailable)?;
+            profiles.verify_link(&event_id, &person_name, &key).await?;
+            person = adaptor
+                .upsert_person(event_id.clone(), person)
+                .await
+                .map_err(ApiError::AdaptorError)?
+                .ok_or(ApiError::NotFound)?;
+            profiles.unlink(&event_id, &person_name).await?;
+        }
+        Some(action) => {
+            let profiles = state.profiles.as_ref().ok_or(ApiError::Unavailable)?;
+            profiles
+                .save(&event, &slots, action, &mut person, submitted_at)
+                .await?;
+        }
+        None => {
+            person = adaptor
+                .upsert_person(event_id, person)
+                .await
+                .map_err(ApiError::AdaptorError)?
+                .ok_or(ApiError::NotFound)?;
+        }
+    }
     state.sessions.revoke(token);
     let notifications = state.notifications.clone();
     drop(state);
@@ -321,6 +356,68 @@ pub async fn update_person<A: Adaptor>(
         person: person.into(),
         submitted_at,
     }))
+}
+
+#[derive(serde::Deserialize)]
+pub struct ProfileKey {
+    key: String,
+}
+
+#[derive(serde::Serialize)]
+pub struct ProfilePreview {
+    availability: Vec<String>,
+    tentative: Vec<String>,
+}
+
+pub async fn preview_profile<A: Adaptor>(
+    extract::State(state): State<A>,
+    Path((event_id, name)): Path<(String, String)>,
+    bearer: Option<TypedHeader<Authorization<Bearer>>>,
+    Json(input): Json<ProfileKey>,
+) -> Result<
+    (
+        [(header::HeaderName, &'static str); 1],
+        Json<ProfilePreview>,
+    ),
+    ApiError<A>,
+> {
+    let state = state.lock().await;
+    participant_token(&state.sessions, &bearer, &event_id, &name)?;
+    let profiles = state.profiles.as_ref().ok_or(ApiError::Unavailable)?;
+    let event = state
+        .adaptor
+        .get_event(event_id)
+        .await
+        .map_err(ApiError::AdaptorError)?
+        .ok_or(ApiError::NotFound)?;
+    let (availability, tentative) = profiles
+        .preview(&event, &available_slots(&event), &input.key)
+        .await?;
+    Ok((
+        [(header::CACHE_CONTROL, "no-store")],
+        Json(ProfilePreview {
+            availability,
+            tentative,
+        }),
+    ))
+}
+
+pub(super) async fn read_people<A: Adaptor>(
+    state: &ApiState<A>,
+    event: &Event,
+    slots: &HashSet<String>,
+) -> Result<(Vec<Person>, HashSet<String>), ApiError<A>> {
+    let mut people = state
+        .adaptor
+        .get_people(event.id.clone())
+        .await
+        .map_err(ApiError::AdaptorError)?
+        .ok_or(ApiError::NotFound)?;
+    let linked = match &state.profiles {
+        Some(profiles) => profiles.hydrate(event, slots, &mut people).await?,
+        None => HashSet::new(),
+    };
+    Ok((people, linked))
 }
 
 fn has_submitted(person: &Person) -> bool {
@@ -397,6 +494,9 @@ pub(super) async fn remove_person<A: Adaptor>(
     event_id: String,
     person_name: String,
 ) -> Result<StatusCode, ApiError<A>> {
+    if let Some(profiles) = &state.profiles {
+        profiles.unlink(&event_id, &person_name).await?;
+    }
     if !state
         .adaptor
         .delete_person(event_id.clone(), person_name.clone())
@@ -426,7 +526,7 @@ fn participant_token<'a, A: Adaptor>(
     }
 }
 
-fn available_slots(event: &Event) -> HashSet<String> {
+pub(super) fn available_slots(event: &Event) -> HashSet<String> {
     if event.slot_size.is_some() {
         return event.times.iter().cloned().collect();
     }
