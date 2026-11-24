@@ -39,6 +39,7 @@ export const PersonInput = z.object({
   availability: z.string().array(),
   tentative: z.string().array().optional(),
   group_id: z.string().nullable().optional(),
+  shared_email: z.string().nullable().optional(),
 })
 export type PersonInput = z.infer<typeof PersonInput>
 
@@ -83,7 +84,10 @@ const post = async <S extends z.Schema>(url: string, schema: S, input: unknown, 
   return schema.parse(await res.json())
 }
 
-const PersonLogin = PersonResponse.extend({ token: z.string() })
+const PersonLogin = PersonResponse.extend({
+  token: z.string(),
+  shared_email: z.string().optional(),
+})
 export type PersonLogin = z.infer<typeof PersonLogin>
 
 const Submission = PersonResponse.extend({ submitted_at: z.number() })
@@ -119,6 +123,7 @@ export const deleteEvent = (id: string, token: string) => remove(`/admin/events/
 export const getStats = () => get('/stats', StatsResponse, undefined, { revalidate: 60 })
 export const getEvent = (eventId: string) => get(eventPath(eventId), EventResponse)
 export const getPeople = (eventId: string) => get(`${eventPath(eventId)}/people`, PersonResponse.array())
+export const getSharedEmails = (eventId: string) => get(`${eventPath(eventId)}/emails`, z.string().array())
 export const getPerson = (eventId: string, personName: string, password?: string) => get(personPath(eventId, personName), PersonLogin, password && encodePassword(password))
 
 // Post

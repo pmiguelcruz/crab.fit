@@ -243,6 +243,7 @@ mod tests {
                             availability: vec!["0900-1".into()],
                             tentative: vec![],
                             group_id: None,
+                            shared_email: None,
                         },
                     )
                     .await

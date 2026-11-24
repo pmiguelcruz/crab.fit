@@ -53,6 +53,19 @@
     "info2": "Alklaku la nomojn sube por vidi homojn individue",
     "clipboard_message": "Homoj disponeblaj je {{date}}"
   },
+  "email": {
+    "opt_in": "Kundividi mian retpoŝtadreson kun ĉiu, kiu havas la ligilon de ĉi tiu voĉdono",
+    "address": "Retpoŝtadreso",
+    "purpose": "Partoprenantoj povas kopii kundividitajn adresojn por kalendaraj invitoj.",
+    "invalid": "Enigu unu validan retpoŝtadreson.",
+    "copy": "Kopii retpoŝtadresojn de partoprenantoj",
+    "empty": "Neniu kundividis retpoŝtadreson por ĉi tiu voĉdono.",
+    "copied_one": "{{count}} retpoŝtadreso kopiita.",
+    "copied_other": "{{count}} retpoŝtadresoj kopiitaj.",
+    "manual": "Elektu kaj kopiu la subajn retpoŝtadresojn.",
+    "list": "Kundividitaj retpoŝtadresoj",
+    "failed": "Ne eblis ŝargi la kundividitajn retpoŝtadresojn. Reprovu."
+  },
   "overlap": {
     "title": "Kompari horzonojn",
     "instructions": "Komparu {{zone}} kun aliaj horzonoj. La samaj maldormaj horoj validas en ĉiuj zonoj.",

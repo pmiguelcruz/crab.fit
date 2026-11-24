@@ -11,6 +11,7 @@ import Error from '/src/components/Error/Error'
 import Login from '/src/components/Login/Login'
 import Section from '/src/components/Section/Section'
 import SelectField from '/src/components/SelectField/SelectField'
+import TextField from '/src/components/TextField/TextField'
 import TimeZoneOverlap, { OverlapSettings } from '/src/components/TimeZoneOverlap/TimeZoneOverlap'
 import { EventResponse, getPeople, PersonLogin, PersonResponse, removeOwnResponse, Submission, updatePerson } from '/src/config/api'
 import { useCalendarSettings } from '/src/hooks/useCalendarSettings'
@@ -22,6 +23,7 @@ import { clockMinutes } from '/src/utils/awakeOverlap'
 import { slotMinutes } from '/src/utils/slotSize'
 
 import styles from './page.module.scss'
+import SharedEmails from './SharedEmails'
 import SubmissionReceipt from './SubmissionReceipt'
 
 interface EventAvailabilitiesProps {
@@ -43,6 +45,8 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
   const [draft, setDraft] = useState<string[]>([])
   const [tentative, setTentative] = useState<string[]>([])
   const [groupId, setGroupId] = useState('')
+  const [sharedEmail, setSharedEmail] = useState<string>()
+  const emailField = useRef<HTMLInputElement>(null)
   const [submitting, setSubmitting] = useState(false)
   const [confirmRemoval, setConfirmRemoval] = useState(false)
   const [removed, setRemoved] = useState(false)
@@ -118,11 +122,12 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
 
   const submit = async () => {
     if (!event || !user || submitting) return
+    if (emailField.current && !emailField.current.reportValidity()) return
     setSubmitting(true)
     setSubmitError('')
     try {
       const submission = await updatePerson(event.id, user.name, {
-        availability: draft, tentative, group_id: groupId || null,
+        availability: draft, tentative, group_id: groupId || null, shared_email: sharedEmail?.trim() ?? null,
       }, user.token)
       setReceipt({ submission, timezone })
       addRecent({
@@ -137,6 +142,7 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
       setUser(undefined)
       setDraft([])
       setTentative([])
+      setSharedEmail(undefined)
       setTab('group')
     } catch (e) {
       if (e instanceof Response && e.status === 401) {
@@ -144,7 +150,8 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
         setTab('group')
         setSubmitError(t('submission.expired'))
       } else if (e instanceof Response && (e.status === 404 || e.status === 422)) {
-        setSubmitError(t('submission.schedule_changed'))
+        const invalidEmail = e.status === 422 && await e.text() === 'invalid_shared_email'
+        setSubmitError(t(invalidEmail ? 'email.invalid' : 'submission.schedule_changed'))
       } else {
         setSubmitError(t('submission.failed'))
       }
@@ -163,6 +170,7 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
       setUser(undefined)
       setDraft([])
       setTentative([])
+      setSharedEmail(undefined)
       setReceipt(undefined)
       setRemoved(true)
       setTab('group')
@@ -188,6 +196,7 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
           setDraft(person?.availability ?? [])
           setTentative(person?.tentative ?? [])
           setGroupId(person?.group_id ?? '')
+          setSharedEmail(person?.shared_email)
           setSubmitError('')
           setConfirmRemoval(false)
           setRemoved(false)
@@ -280,13 +289,16 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
       </div>
     </Content>
 
-    {tab === 'group' ? <AvailabilityViewer
-      times={expandedTimes}
-      people={people}
-      groups={event?.groups}
-      datesOnly={datesOnly}
-      table={table}
-    /> : user && <>
+    {tab === 'group' ? <>
+      {event && <SharedEmails key={event.id} eventId={event.id} />}
+      <AvailabilityViewer
+        times={expandedTimes}
+        people={people}
+        groups={event?.groups}
+        datesOnly={datesOnly}
+        table={table}
+      />
+    </> : user && <>
       {!!event?.groups?.length && <Content>
         <SelectField
           label={t('teams.your_group')}
@@ -298,6 +310,31 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
           onChange={e => setGroupId(e.currentTarget.value)}
         />
       </Content>}
+      <Content>
+        <label className={styles.shareEmailChoice}>
+          <input
+            name="share-email"
+            type="checkbox"
+            checked={sharedEmail !== undefined}
+            disabled={submitting}
+            onChange={e => setSharedEmail(e.currentTarget.checked ? '' : undefined)}
+          />
+          {t('email.opt_in')}
+        </label>
+        {sharedEmail !== undefined && <TextField
+          name="shared-email"
+          label={t('email.address')}
+          description={t('email.purpose')}
+          type="email"
+          autoComplete="email"
+          ref={emailField}
+          value={sharedEmail}
+          disabled={submitting}
+          maxLength={254}
+          required
+          onChange={e => setSharedEmail(e.currentTarget.value)}
+        />}
+      </Content>
       <AvailabilityEditor
         eventId={event?.id}
         times={expandedTimes}

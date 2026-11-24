@@ -384,6 +384,8 @@ struct DatastorePerson {
     tentative: Vec<String>,
     #[datastore(rename = "group_id")]
     group_id: Option<String>,
+    #[datastore(rename = "shared_email")]
+    shared_email: Option<String>,
 }
 
 impl FromValue for DatastorePerson {
@@ -400,6 +402,7 @@ impl FromValue for DatastorePerson {
             .transpose()?;
         let password = optional_string(properties.remove("password"))?;
         let group_id = optional_string(properties.remove("group_id"))?;
+        let shared_email = optional_string(properties.remove("shared_email"))?;
         let mut required = |name: &str| {
             properties
                 .remove(name)
@@ -413,6 +416,7 @@ impl FromValue for DatastorePerson {
             availability: Vec::from_value(required("availability")?)?,
             tentative: tentative.unwrap_or_default(),
             group_id,
+            shared_email,
         })
     }
 }
@@ -426,6 +430,7 @@ impl From<DatastorePerson> for Person {
             availability: value.availability,
             tentative: value.tentative,
             group_id: value.group_id,
+            shared_email: value.shared_email,
         }
     }
 }
@@ -440,6 +445,7 @@ impl DatastorePerson {
             availability: person.availability,
             tentative: person.tentative,
             group_id: person.group_id,
+            shared_email: person.shared_email,
         }
     }
 }
@@ -526,6 +532,7 @@ mod tests {
             availability: vec!["0900-4".into()],
             tentative: vec!["0915-4".into()],
             group_id: Some("group-id".into()),
+            shared_email: Some("ada@example.org".into()),
         };
         let Value::EntityValue(mut properties) = record.into_value() else {
             panic!("expected person properties");
@@ -534,14 +541,17 @@ mod tests {
         assert_eq!(saved.tentative, ["0915-4"]);
         assert_eq!(saved.password.as_deref(), Some("saved-hash"));
         assert_eq!(saved.group_id.as_deref(), Some("group-id"));
+        assert_eq!(saved.shared_email.as_deref(), Some("ada@example.org"));
 
         properties.remove("tentative");
         properties.remove("group_id");
+        properties.remove("shared_email");
         let legacy = DatastorePerson::from_value(Value::EntityValue(properties)).unwrap();
         assert!(legacy.tentative.is_empty());
         assert_eq!(legacy.availability, ["0900-4"]);
         assert_eq!(legacy.password.as_deref(), Some("saved-hash"));
         assert!(legacy.group_id.is_none());
+        assert!(legacy.shared_email.is_none());
     }
 
     #[test]

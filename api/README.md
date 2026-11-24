@@ -83,6 +83,14 @@ keep the current assignment or set it to `null` to clear it. Admin edits can
 rename a group by including its ID and new name, or remove a group by leaving
 it out of the array. Removing a group preserves its participants' choices.
 
+### Shared participant emails
+
+Participants can include `shared_email` in a signed-in availability submission.
+This publishes the address for that poll. Omit the field to keep the previous
+choice or send `null` to stop sharing. `GET /event/{id}/emails` lists the
+addresses that participants chose to share, with duplicates removed. Ordinary
+availability results and receipts exclude email addresses.
+
 ### Self-hosted URLs and listening address
 
 Set the API's `FRONTEND_URL` to the browser-facing frontend origin, for example

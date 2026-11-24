@@ -17,6 +17,7 @@ use utoipa::{
         routes::event::create_event,
         routes::event::get_event,
         routes::person::get_people,
+        routes::person::get_shared_emails,
         routes::person::get_person,
         routes::person::update_person,
         routes::tasks::cleanup,

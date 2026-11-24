@@ -60,6 +60,19 @@
     "info2": "Click the names below to view people individually",
     "clipboard_message": "People available on {{date}}"
   },
+  "email": {
+    "opt_in": "Share my email with anyone who has this poll’s link",
+    "address": "Email address",
+    "purpose": "Participants can copy shared addresses for calendar invitations.",
+    "invalid": "Enter one valid email address.",
+    "copy": "Copy participant emails",
+    "empty": "Nobody has shared an email address for this poll.",
+    "copied_one": "Copied {{count}} email address.",
+    "copied_other": "Copied {{count}} email addresses.",
+    "manual": "Select and copy the email addresses below.",
+    "list": "Shared email addresses",
+    "failed": "Could not load the shared email addresses. Try again."
+  },
 
   "overlap": {
     "title": "Compare time zones",

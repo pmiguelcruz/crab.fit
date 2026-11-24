@@ -6,6 +6,7 @@ pub enum ApiError<A: Adaptor> {
     NotFound,
     NotAuthorized,
     InvalidInput,
+    InvalidSharedEmail,
     Unavailable,
 }
 
@@ -19,6 +20,9 @@ impl<A: Adaptor> IntoResponse for ApiError<A> {
             }
             ApiError::NotFound => StatusCode::NOT_FOUND.into_response(),
             ApiError::InvalidInput => StatusCode::UNPROCESSABLE_ENTITY.into_response(),
+            ApiError::InvalidSharedEmail => {
+                (StatusCode::UNPROCESSABLE_ENTITY, "invalid_shared_email").into_response()
+            }
             ApiError::Unavailable => StatusCode::SERVICE_UNAVAILABLE.into_response(),
             ApiError::NotAuthorized => StatusCode::UNAUTHORIZED.into_response(),
         }

@@ -107,4 +107,5 @@ pub struct Person {
     pub availability: Vec<String>,
     pub tentative: Vec<String>,
     pub group_id: Option<String>,
+    pub shared_email: Option<String>,
 }

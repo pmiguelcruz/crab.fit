@@ -37,6 +37,7 @@ const Page = async () => {
         <P>If you choose to use the Service, then you agree to the collection and use of information in relation to this policy. The Personal Information that is collected is used for providing and improving the Service. Your information will not be used or shared with anyone except as described in this Privacy Policy.</P>
 
         <h2>Information Collection and Use</h2>
+        <P>If you choose to share your email address when submitting availability, anyone with the event link can copy it for calendar invitations. To stop sharing, sign in to that event, clear the sharing option, and submit your availability again.</P>
         <P>The Service uses third party services that may collect information used to identify you.</P>
         <P>Links to privacy policies of the third party service providers used by the Service:</P>
         <Ul>

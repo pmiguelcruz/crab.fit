@@ -108,13 +108,17 @@ pub struct PersonInput {
     pub availability: Vec<String>,
     pub tentative: Option<Vec<String>>,
     /// Omit to keep the current group. Set to null to clear it.
-    #[serde(default, deserialize_with = "group_choice")]
+    #[serde(default, deserialize_with = "optional_string_change")]
     #[schema(value_type = Option<String>, nullable)]
     pub group_id: Option<Option<String>>,
+    /// Share an address with visitors to this poll. Omit to keep it or set it to null to clear it.
+    #[serde(default, deserialize_with = "optional_string_change")]
+    #[schema(value_type = Option<String>, nullable)]
+    pub shared_email: Option<Option<String>>,
 }
 
-// Omission preserves the group when an older client edits availability.
-fn group_choice<'de, D: serde::Deserializer<'de>>(
+// An omitted field leaves existing data in place. An explicit null removes it.
+fn optional_string_change<'de, D: serde::Deserializer<'de>>(
     value: D,
 ) -> Result<Option<Option<String>>, D::Error> {
     Option::deserialize(value).map(Some)
@@ -142,6 +146,8 @@ pub struct PersonLogin {
     #[serde(flatten)]
     pub person: PersonResponse,
     pub token: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub shared_email: Option<String>,
 }
 
 #[derive(Serialize, ToSchema)]

@@ -31,6 +31,7 @@ On November 23, 2026, the upstream repository had 56 open issues. This records t
 - The entire French heading uses a face that supports the accented glyph. Chromium displayed “CRÉER UN” and reported the same font family for the whole heading. [#345](https://github.com/GRA0007/crab.fit/issues/345)
 - MySQL 8.4 creates and migrates the three event and participant timestamp columns to DATETIME. A legacy poll and response kept their UTC timestamps and availability, and new votes saved in both fresh and migrated databases. [#355](https://github.com/GRA0007/crab.fit/issues/355)
 - The Docker build uses Rust 1.92.0 and matches the Debian builder and runtime releases. On Linux ARM64 both adaptor images built and resolved their shared libraries, including OpenSSL for SQL. The SQL container started against MySQL and saved and returned a vote. [#315](https://github.com/GRA0007/crab.fit/issues/315), [#305](https://github.com/GRA0007/crab.fit/issues/305)
+- Participants can opt in to sharing an address for calendar invitations, and visitors can copy the poll's shared email list. Chromium and WebKit exercised the copy and manual fallback flows. SQLite and MySQL verified validation, deduplication, and removal. [#308](https://github.com/GRA0007/crab.fit/issues/308)
 
 ## Code changed, with verification or coverage pending
 
@@ -41,6 +42,6 @@ On November 23, 2026, the upstream repository had 56 open issues. This records t
 
 ## Open work
 
-- Vote notifications, cross-poll availability sync, and participant email lists. These need shared identities or a delivery service. [#331](https://github.com/GRA0007/crab.fit/issues/331), [#323](https://github.com/GRA0007/crab.fit/issues/323), [#308](https://github.com/GRA0007/crab.fit/issues/308), [#135](https://github.com/GRA0007/crab.fit/issues/135)
+- Vote notifications and cross-poll availability sync. These need verified subscriptions or shared identities. [#331](https://github.com/GRA0007/crab.fit/issues/331), [#323](https://github.com/GRA0007/crab.fit/issues/323), [#135](https://github.com/GRA0007/crab.fit/issues/135)
 - Both reported URLs returned an HTTP response from the local test network. The affected user's connection failure still needs diagnostics from that network. [#354](https://github.com/GRA0007/crab.fit/issues/354)
 - F-Droid publication needs the Android project and store submission. [#33](https://github.com/GRA0007/crab.fit/issues/33)

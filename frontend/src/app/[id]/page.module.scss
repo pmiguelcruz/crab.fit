@@ -98,3 +98,22 @@
 .submission button {
   margin-inline: 6px;
 }
+
+.shareEmails {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin-bottom: 12px;
+}
+
+.shareEmailChoice {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-block: 12px;
+
+  input {
+    accent-color: var(--primary);
+  }
+}

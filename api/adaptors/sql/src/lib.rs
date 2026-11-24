@@ -81,6 +81,7 @@ impl Adaptor for SqlAdaptor {
             availability: Set(serde_json::to_value(person.availability).unwrap_or(json!([]))),
             tentative: Set(Some(json!(person.tentative))),
             group_id: Set(person.group_id),
+            shared_email: Set(person.shared_email),
             event_id: Set(event_id.clone()),
         };
 
@@ -295,6 +296,7 @@ impl From<person::Model> for Person {
                 .and_then(|times| serde_json::from_value(times).ok())
                 .unwrap_or_default(),
             group_id: value.group_id,
+            shared_email: value.shared_email,
         }
     }
 }

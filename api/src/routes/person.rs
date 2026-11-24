@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 
 use axum::{
     extract::{self, Path},
@@ -8,6 +8,7 @@ use axum::{
 };
 use base64::{engine::general_purpose, Engine};
 use common::{Adaptor, Event, EventGroup, Person};
+use email_address::{EmailAddress, Options as EmailOptions};
 
 use crate::{
     errors::ApiError,
@@ -58,6 +59,39 @@ pub async fn get_people<A: Adaptor>(
                     || person.group_id.is_some()
             })
             .collect(),
+    ))
+}
+
+#[utoipa::path(
+    get,
+    path = "/event/{event_id}/emails",
+    params(("event_id", description = "The ID of the event")),
+    responses(
+        (status = 200, description = "Addresses participants chose to share for this event", body = [String]),
+        (status = 404, description = "Event not found"),
+        (status = 429, description = "Too many requests"),
+    ),
+    tag = "person",
+)]
+pub async fn get_shared_emails<A: Adaptor>(
+    extract::State(state): State<A>,
+    Path(event_id): Path<String>,
+) -> Result<([(header::HeaderName, &'static str); 1], Json<Vec<String>>), ApiError<A>> {
+    let people = state
+        .lock()
+        .await
+        .adaptor
+        .get_people(event_id)
+        .await
+        .map_err(ApiError::AdaptorError)?
+        .ok_or(ApiError::NotFound)?;
+    let emails: BTreeSet<_> = people
+        .into_iter()
+        .filter_map(|person| person.shared_email)
+        .collect();
+    Ok((
+        [(header::CACHE_CONTROL, "no-store")],
+        Json(emails.into_iter().collect()),
     ))
 }
 
@@ -126,6 +160,7 @@ pub async fn get_person<A: Adaptor>(
                         availability: vec![],
                         tentative: vec![],
                         group_id: None,
+                        shared_email: None,
                     },
                 )
                 .await
@@ -149,10 +184,15 @@ pub async fn get_person<A: Adaptor>(
             PARTICIPANT_TTL,
         )
         .ok_or(ApiError::Unavailable)?;
+    let shared_email = person.shared_email.clone();
     let person = active_response(person, &available_slots(&event), &event.groups);
     Ok((
         [(header::CACHE_CONTROL, "no-store")],
-        Json(PersonLogin { person, token }),
+        Json(PersonLogin {
+            person,
+            token,
+            shared_email,
+        }),
     ))
 }
 
@@ -184,6 +224,15 @@ pub async fn update_person<A: Adaptor>(
 ) -> ApiResult<Submission, A> {
     let mut state = state.lock().await;
     let token = participant_token(&state.sessions, &bearer, &event_id, &person_name)?;
+    let submitted_email = input
+        .shared_email
+        .map(|value| {
+            value
+                .map(|email| normalize_shared_email(&email))
+                .transpose()
+        })
+        .transpose()
+        .map_err(|_| ApiError::InvalidSharedEmail)?;
 
     let adaptor = &state.adaptor;
     let event = adaptor
@@ -227,6 +276,7 @@ pub async fn update_person<A: Adaptor>(
         .group_id
         .unwrap_or(person.group_id)
         .filter(|id| has_group(&event.groups, id));
+    let shared_email = submitted_email.unwrap_or(person.shared_email);
     let person = adaptor
         .upsert_person(
             event_id,
@@ -234,6 +284,7 @@ pub async fn update_person<A: Adaptor>(
                 availability,
                 tentative,
                 group_id,
+                shared_email,
                 ..person
             },
         )
@@ -246,6 +297,27 @@ pub async fn update_person<A: Adaptor>(
         person: person.into(),
         submitted_at: chrono::Utc::now().timestamp(),
     }))
+}
+
+fn normalize_shared_email(input: &str) -> Result<String, ()> {
+    let email = input.trim();
+    if email.len() > 254 || email.chars().any(char::is_control) {
+        return Err(());
+    }
+    let email = EmailAddress::parse_with_options(
+        email,
+        EmailOptions {
+            allow_display_text: false,
+            allow_domain_literal: false,
+            ..EmailOptions::default()
+        },
+    )
+    .map_err(|_| ())?;
+    Ok(format!(
+        "{}@{}",
+        email.local_part(),
+        email.domain().to_lowercase()
+    ))
 }
 
 pub async fn delete_person<A: Adaptor>(
