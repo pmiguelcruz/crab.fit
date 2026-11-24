@@ -43,28 +43,39 @@ pub async fn get_event<A: Adaptor>(
         .map_err(ApiError::AdaptorError)?;
 
     match event {
-        Some(event) => Ok(Json(event_response(&state, event).await?)),
+        Some(event) => Ok(Json(read_event_response(&state, event).await)),
         None => Err(ApiError::NotFound),
     }
 }
 
-pub(super) async fn event_response<A: Adaptor>(
-    state: &ApiState<A>,
-    event: Event,
-) -> Result<EventResponse, ApiError<A>> {
-    let choice = if let Some(profiles) = &state.profiles {
-        profiles
-            .final_choice(&event.id)
-            .await?
-            .filter(|choice| available_slots(&event).contains(choice))
-    } else {
-        None
-    };
+pub(super) fn event_response<A: Adaptor>(state: &ApiState<A>, event: Event) -> EventResponse {
     let mut response = EventResponse::from(event);
     response.notifications_available = state.notifications.is_some().then_some(true);
     response.shared_availability_available = state.profiles.is_some().then_some(true);
-    response.final_choice = choice;
-    Ok(response)
+    response
+}
+
+pub(super) async fn read_event_response<A: Adaptor>(
+    state: &ApiState<A>,
+    event: Event,
+) -> EventResponse {
+    let choice = if let Some(profiles) = &state.profiles {
+        profiles
+            .final_choice(&event.id)
+            .await
+            .map(|choice| choice.filter(|choice| available_slots(&event).contains(choice)))
+    } else {
+        Ok(None)
+    };
+    let mut response = event_response(state, event);
+    match choice {
+        Ok(choice) => response.final_choice = choice,
+        Err(error) => {
+            tracing::warn!(?error, "Could not read the poll's final choice");
+            response.shared_availability_available = None;
+        }
+    }
+    response
 }
 
 #[utoipa::path(
@@ -148,10 +159,7 @@ pub async fn create_event<A: Adaptor>(
         tracing::warn!(%error, "Could not count a newly created poll");
     }
 
-    Ok((
-        StatusCode::CREATED,
-        Json(event_response(&state, event).await?),
-    ))
+    Ok((StatusCode::CREATED, Json(event_response(&state, event))))
 }
 
 // Generate a random name based on an adjective and a crab species

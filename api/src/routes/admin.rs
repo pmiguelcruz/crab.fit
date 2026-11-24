@@ -10,7 +10,7 @@ use crate::{
     errors::ApiError,
     payloads::{ApiResult, EventEdit, EventResponse, PinInput, TokenResponse},
     routes::{
-        event::{event_response, valid_choices, validate_groups},
+        event::{event_response, read_event_response, valid_choices, validate_groups},
         person::{available_slots, read_people, remove_person},
     },
     sessions::{Session, ADMIN_TTL},
@@ -69,7 +69,7 @@ pub async fn list_events<A: Adaptor>(
     });
     let mut response = Vec::with_capacity(events.len());
     for event in events {
-        response.push(event_response(&state, event).await?);
+        response.push(read_event_response(&state, event).await);
     }
     Ok(([(header::CACHE_CONTROL, "no-store")], Json(response)))
 }
@@ -87,20 +87,23 @@ pub async fn update_event<A: Adaptor>(
     if name.is_empty() || name.chars().count() > 255 || name.chars().any(char::is_control) {
         return Err(ApiError::InvalidInput);
     }
+    let mut times = input.times;
     let mut groups = None;
-    if input.times.is_some() || input.groups.is_some() {
+    if times.is_some() || input.groups.is_some() {
         let event = state
             .adaptor
             .get_event(id.clone())
             .await
             .map_err(ApiError::AdaptorError)?
             .ok_or(ApiError::NotFound)?;
-        if input
-            .times
+        if times
             .as_ref()
             .is_some_and(|choices| !valid_choices(choices, event.slot_size))
         {
             return Err(ApiError::InvalidInput);
+        }
+        if times.as_ref() == Some(&event.times) {
+            times = None;
         }
         if let Some(group_edits) = input.groups {
             groups =
@@ -108,24 +111,23 @@ pub async fn update_event<A: Adaptor>(
         }
     }
 
+    let final_choice = match (&state.profiles, &times) {
+        (Some(profiles), Some(_)) => profiles.final_choice(&id).await?,
+        _ => None,
+    };
     let event = state
         .adaptor
-        .update_event(id, name.to_owned(), input.times, groups)
+        .update_event(id, name.to_owned(), times, groups)
         .await
         .map_err(ApiError::AdaptorError)?
         .ok_or(ApiError::NotFound)?;
-    if let Some(profiles) = &state.profiles {
-        if profiles
-            .final_choice(&event.id)
-            .await?
-            .is_some_and(|choice| !available_slots(&event).contains(&choice))
-        {
-            profiles
-                .set_final_choice(&event, &available_slots(&event), None, &[])
-                .await?;
+    if let (Some(profiles), Some(choice)) = (&state.profiles, final_choice) {
+        let slots = available_slots(&event);
+        if !slots.contains(&choice) {
+            profiles.set_final_choice(&event, &slots, None, &[]).await?;
         }
     }
-    Ok(Json(event_response(&state, event).await?))
+    Ok(Json(read_event_response(&state, event).await))
 }
 
 #[derive(serde::Deserialize)]
@@ -153,7 +155,9 @@ pub async fn set_final_choice<A: Adaptor>(
     profiles
         .set_final_choice(&event, &slots, input.choice.as_deref(), &people)
         .await?;
-    Ok(Json(event_response(&state, event).await?))
+    let mut response = event_response(&state, event);
+    response.final_choice = input.choice;
+    Ok(Json(response))
 }
 
 pub async fn delete_event<A: Adaptor>(
