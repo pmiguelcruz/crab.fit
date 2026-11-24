@@ -4,8 +4,10 @@ import { Fragment, useEffect, useMemo, useState } from 'react'
 import { flip, offset, shift, useFloating } from '@floating-ui/react-dom'
 import { Temporal } from '@js-temporal/polyfill'
 
+import Button from '/src/components/Button/Button'
 import Content from '/src/components/Content/Content'
 import Legend from '/src/components/Legend/Legend'
+import SelectField from '/src/components/SelectField/SelectField'
 import { PersonResponse } from '/src/config/api'
 import { usePalette } from '/src/hooks/usePalette'
 import { useTranslation } from '/src/i18n/client'
@@ -56,8 +58,10 @@ const AvailabilityViewer = ({ times, people, table }: AvailabilityViewerProps) =
 
   const heatmap = useMemo(() => table?.columns.map((column, x) => <Fragment key={x}>
     {column ? <div className={styles.dateColumn}>
-      {column.header.dateLabel && <label className={styles.dateLabel}>{column.header.dateLabel}</label>}
-      <label className={styles.dayLabel}>{column.header.weekdayLabel}</label>
+      <div className={styles.dateHeading}>
+        {column.header.dateLabel && <span className={styles.dateLabel}>{column.header.dateLabel}</span>}
+        <span className={styles.dayLabel}>{column.header.weekdayLabel}</span>
+      </div>
 
       <div
         className={styles.times}
@@ -103,7 +107,7 @@ const AvailabilityViewer = ({ times, people, table }: AvailabilityViewerProps) =
             }}
             onClick={() => {
               const clipboardMessage = `${t('group.clipboard_message', { date: cell.label })}:\n${peopleHere.join(', ')}`
-              navigator.clipboard.writeText(clipboardMessage)
+              navigator.clipboard?.writeText(clipboardMessage).catch(console.warn)
             }}
             onMouseLeave={() => setTooltip(undefined)}
           />
@@ -138,6 +142,26 @@ const AvailabilityViewer = ({ times, people, table }: AvailabilityViewerProps) =
       {people.length > 1 && <>
         <span className={styles.info}>{t('group.info2')}</span>
         <div className={styles.people}>
+          <Button isSmall isSecondary disabled={filteredPeople.length === people.length}
+            onClick={() => setFilteredPeople(people.map(person => person.name))}>{t('group.all_people')}</Button>
+          <Button isSmall isSecondary disabled={filteredPeople.length === 0}
+            onClick={() => setFilteredPeople([])}>{t('group.no_people')}</Button>
+          <SelectField
+            name="person-focus"
+            aria-label={t('group.isolate')}
+            options={people.map(person => person.name)}
+            defaultOption={t('group.choose_person')}
+            value={filteredPeople.length === 1 ? filteredPeople[0] : ''}
+            isInline
+            isSmall
+            onChange={e => {
+              setTempFocus(undefined)
+              const name = e.currentTarget.value
+              setFilteredPeople(name ? [name] : people.map(person => person.name))
+            }}
+          />
+        </div>
+        <div className={styles.people}>
           {people.map(person =>
             <button
               type="button"
@@ -146,6 +170,7 @@ const AvailabilityViewer = ({ times, people, table }: AvailabilityViewerProps) =
                 filteredPeople.includes(person.name) && styles.personSelected,
               )}
               key={person.name}
+              aria-pressed={filteredPeople.includes(person.name)}
               onClick={() => {
                 setTempFocus(undefined)
                 if (filteredPeople.includes(person.name)) {
@@ -164,7 +189,7 @@ const AvailabilityViewer = ({ times, people, table }: AvailabilityViewerProps) =
     </Content>
 
     <div className={styles.wrapper}>
-      <div>
+      <div tabIndex={0} role="region" aria-label={t('group.calendar')} onScroll={() => setTooltip(undefined)}>
         <div className={styles.heatmap}>
           {useMemo(() => <div className={styles.timeLabels}>
             {table?.rows.map((row, i) =>

@@ -5,9 +5,8 @@ import { FieldValues, useController, UseControllerProps } from 'react-hook-form'
 import { Temporal } from '@js-temporal/polyfill'
 
 import { Description, Label, Wrapper } from '/src/components/Field/Field'
+import { useCalendarSettings } from '/src/hooks/useCalendarSettings'
 import { useTranslation } from '/src/i18n/client'
-import { useStore } from '/src/stores'
-import useSettingsStore from '/src/stores/settingsStore'
 
 import styles from './TimeRangeField.module.scss'
 
@@ -81,8 +80,8 @@ interface HandleProps {
 }
 
 const Handle = ({ value, onChange, labelPadding }: HandleProps) => {
-  const timeFormat = useStore(useSettingsStore, state => state.timeFormat)
   const { i18n } = useTranslation()
+  const { timeFormat } = useCalendarSettings(i18n.language)
 
   const isMoving = useRef(false)
   const rangeRect = useRef({ left: 0, width: 0 })
@@ -108,7 +107,7 @@ const Handle = ({ value, onChange, labelPadding }: HandleProps) => {
       left: `calc(${value * 4.166}% - 11px)`,
       '--extra-padding': labelPadding,
     } as React.CSSProperties}
-    data-label={Temporal.PlainTime.from({ hour: Number(times[value] === '24' ? '00' : times[value]) }).toLocaleString(i18n.language, { hour: 'numeric', hourCycle: timeFormat === '12h' ? 'h12' : 'h24' })}
+    data-label={Temporal.PlainTime.from({ hour: Number(times[value] === '24' ? '00' : times[value]) }).toLocaleString(i18n.language, { hour: 'numeric', hourCycle: timeFormat === '12h' ? 'h12' : 'h23' })}
     onMouseDown={() => {
       document.addEventListener('mousemove', handleMouseMove)
       isMoving.current = true

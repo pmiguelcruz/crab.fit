@@ -56,13 +56,16 @@ async fn main() {
         .allow_headers([AUTHORIZATION, ACCEPT, CONTENT_TYPE])
         .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
         .allow_origin(
-            if cfg!(debug_assertions) {
-                "http://localhost:1234".to_owned()
-            } else {
-                env::var("FRONTEND_URL").expect("Missing FRONTEND_URL environment variable")
-            }
-            .parse::<HeaderValue>()
-            .unwrap(),
+            env::var("FRONTEND_URL")
+                .unwrap_or_else(|_| {
+                    if cfg!(debug_assertions) {
+                        "http://localhost:1234".to_owned()
+                    } else {
+                        panic!("Missing FRONTEND_URL environment variable")
+                    }
+                })
+                .parse::<HeaderValue>()
+                .expect("Invalid FRONTEND_URL"),
         );
 
     // Rate limiting configuration (using tower_governor)
@@ -110,7 +113,10 @@ async fn main() {
         .layer(rate_limit)
         .layer(TraceLayer::new_for_http());
 
-    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
+    let addr: SocketAddr = env::var("LISTEN_ADDR")
+        .unwrap_or_else(|_| "0.0.0.0:3000".to_owned())
+        .parse()
+        .expect("LISTEN_ADDR must be an IP address and port, e.g. 127.0.0.1:3000");
 
     println!(
         "🦀 Crab Fit API listening at http://{} in {} mode",

@@ -9,6 +9,7 @@ use common::Adaptor;
 use crate::{
     errors::ApiError,
     payloads::{ApiResult, EventEdit, EventResponse, PinInput, TokenResponse},
+    routes::event::valid_times,
     sessions::{Session, ADMIN_TTL},
     State,
 };
@@ -126,31 +127,4 @@ fn admin_token<'a, A: Adaptor>(
         return Err(ApiError::NotAuthorized);
     }
     Ok(token)
-}
-
-fn valid_times(times: &[String]) -> bool {
-    let Some(first) = times.first() else {
-        return false;
-    };
-    times.iter().all(|time| {
-        if time.len() != first.len() || !time.is_ascii() {
-            return false;
-        }
-        let Some((clock, date)) = time.split_once('-') else {
-            return false;
-        };
-        if clock.len() != 4
-            || !clock.bytes().all(|b| b.is_ascii_digit())
-            || chrono::NaiveTime::parse_from_str(clock, "%H%M").is_err()
-        {
-            return false;
-        }
-        match date.as_bytes() {
-            [b'0'..=b'6'] => true,
-            digits if digits.len() == 8 && digits.iter().all(u8::is_ascii_digit) => {
-                chrono::NaiveDate::parse_from_str(date, "%d%m%Y").is_ok()
-            }
-            _ => false,
-        }
-    })
 }

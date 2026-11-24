@@ -7,8 +7,8 @@ type Theme = 'System' | 'Light' | 'Dark'
 
 interface SettingsStore {
   /** 0: Sunday, 1: Monday */
-  weekStart: 0 | 1
-  timeFormat: TimeFormat
+  weekStart?: 0 | 1
+  timeFormat?: TimeFormat
   theme: Theme
   highlight: boolean
   colormap: 'crabfit' | MapKey
@@ -22,8 +22,6 @@ interface SettingsStore {
 
 const useSettingsStore = create<SettingsStore>()(persist(
   set => ({
-    weekStart: 0,
-    timeFormat: '12h',
     theme: 'System',
     highlight: false,
     colormap: 'crabfit',

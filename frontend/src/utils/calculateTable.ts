@@ -9,6 +9,7 @@ export interface CalculateTableArgs {
   locale: string
   timeFormat: '12h' | '24h'
   timezone: string
+  weekStart?: 0 | 1
 }
 
 /**
@@ -20,8 +21,10 @@ export const calculateTable = ({
   locale,
   timeFormat,
   timezone,
+  weekStart = 0,
 }: CalculateTableArgs) => {
-  const dates = convertTimesToDates(times, timezone)
+  const dates = convertTimesToDates(times, timezone, weekStart)
+  const slots = new Set(times)
   const rows = calculateRows(dates)
   const columns = calculateColumns(dates)
 
@@ -30,7 +33,7 @@ export const calculateTable = ({
 
   return {
     rows: rows.map(row => row && row.minute === 0 ? {
-      label: row.toLocaleString(locale, { hour: 'numeric', hourCycle: timeFormat === '12h' ? 'h12' : 'h24' }),
+      label: row.toLocaleString(locale, { hour: 'numeric', hourCycle: timeFormat === '12h' ? 'h12' : 'h23' }),
       string: row.toString(),
     } : null),
 
@@ -46,14 +49,14 @@ export const calculateTable = ({
         const serialized = serializeTime(date, isSpecificDates)
 
         // Cell not in dates
-        if (!times.includes(serialized)) return null
+        if (!slots.has(serialized)) return null
 
         return {
           serialized,
           minute: date.minute,
           label: isSpecificDates
-            ? date.toLocaleString(locale, { dateStyle: 'long', timeStyle: 'short', hourCycle: timeFormat === '12h' ? 'h12' : 'h24' })
-            : `${date.toLocaleString(locale, { timeStyle: 'short', hourCycle: timeFormat === '12h' ? 'h12' : 'h24' })}, ${date.toLocaleString(locale, { weekday: 'long' })}`,
+            ? date.toLocaleString(locale, { dateStyle: 'long', timeStyle: 'short', hourCycle: timeFormat === '12h' ? 'h12' : 'h23' })
+            : `${date.toLocaleString(locale, { timeStyle: 'short', hourCycle: timeFormat === '12h' ? 'h12' : 'h23' })}, ${date.toLocaleString(locale, { weekday: 'long' })}`,
         }
       })
     } : null)

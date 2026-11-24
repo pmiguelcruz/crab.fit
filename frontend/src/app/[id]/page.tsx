@@ -17,16 +17,19 @@ interface PageProps {
 }
 
 export const generateMetadata = async ({ params }: PageProps): Promise<Metadata> => {
-  const event = await getEvent(params.id).catch(() => undefined)
-  const { t } = await useTranslation('event')
-
-  return {
-    title: event?.name ?? t('error.title'),
+  try {
+    return { title: (await getEvent(params.id)).name }
+  } catch (error) {
+    const { t } = await useTranslation('event')
+    return { title: error instanceof Response && error.status === 404 ? t('error.title') : t('error.unavailable_title') }
   }
 }
 
 const Page = async ({ params }: PageProps) => {
-  const event = await getEvent(params.id).catch(() => undefined)
+  const event = await getEvent(params.id).catch(error => {
+    if (error instanceof Response && error.status === 404) return null
+    throw error ?? new Error('Crab Fit API unavailable')
+  })
   if (!event) notFound()
 
   const { t, i18n } = await useTranslation(['common', 'event'])

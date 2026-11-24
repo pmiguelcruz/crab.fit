@@ -2,9 +2,8 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { range, rotateArray } from '@giraugh/tools'
 import { Temporal } from '@js-temporal/polyfill'
 
+import { useCalendarSettings } from '/src/hooks/useCalendarSettings'
 import { useTranslation } from '/src/i18n/client'
-import { useStore } from '/src/stores'
-import useSettingsStore from '/src/stores/settingsStore'
 import { makeClass } from '/src/utils'
 
 // Use styles from Month picker
@@ -19,7 +18,7 @@ interface WeekdaysProps {
 const Weekdays = ({ value, onChange }: WeekdaysProps) => {
   const { t, i18n } = useTranslation('home')
 
-  const weekStart = useStore(useSettingsStore, state => state.weekStart) ?? 0
+  const { weekStart } = useCalendarSettings(i18n.language)
 
   const weekdays = useMemo(() => rotateArray(range(1, 7).map(i => Temporal.Now.plainDateISO().add({ days: i - Temporal.Now.plainDateISO().dayOfWeek })), weekStart ? 0 : 1), [weekStart])
 

@@ -3,6 +3,7 @@ import Script from 'next/script'
 import { Temporal } from '@js-temporal/polyfill'
 
 import Button from '/src/components/Button/Button'
+import ErrorAlert from '/src/components/Error/Error'
 import { useTranslation } from '/src/i18n/client'
 import GoogleIcon from '/src/res/GoogleIcon'
 import { allowUrlToWrap, parseSpecificDate } from '/src/utils'
@@ -51,6 +52,7 @@ const GoogleCalendar = ({ timezone, timeStart, timeEnd, times, onImport }: Googl
   // Prevent Google scripts from loading until button pressed
   const [canLoad, setCanLoad] = useState(false)
   const [calendars, setCalendars] = useState<Calendar[]>()
+  const [error, setError] = useState('')
 
   // Clear calendars if logged out
   useEffect(() => {
@@ -63,48 +65,60 @@ const GoogleCalendar = ({ timezone, timeStart, timeEnd, times, onImport }: Googl
       gapi.client.calendar.calendarList.list({
         'minAccessRole': 'freeBusyReader'
       })
-        .then(res => setCalendars(res.result.items.map(item => ({
+        .then(res => setCalendars(res.result.items?.map(item => ({
           id: item.id,
           name: item.summary,
           description: item.description,
           color: item.backgroundColor,
           isChecked: item.primary === true,
-        }))))
-        .catch(console.warn)
+        })) ?? []))
+        .catch(() => {
+          setError(t('you.integration.failed'))
+          setCanLoad(false)
+        })
     } else {
       setCanLoad(false)
     }
-  }, [])
+  }, [t])
 
   // Process times so they can be checked quickly
   const epochTimes = useMemo(() => times.map(t => parseSpecificDate(t).epochMilliseconds), [times])
 
   const [isLoadingAvailability, setIsLoadingAvailability] = useState(false)
-  const importAvailability = useCallback(() => {
-    if (!calendars) return
+  const importAvailability = async () => {
+    const selected = calendars?.filter(calendar => calendar.isChecked)
+    if (!selected?.length) return
 
+    setError('')
     setIsLoadingAvailability(true)
-    gapi.client.calendar.freebusy.query({
-      timeMin: timeStart.toPlainDateTime().toString({ smallestUnit: 'millisecond' }) + 'Z',
-      timeMax: timeEnd.toPlainDateTime().toString({ smallestUnit: 'millisecond' }) + 'Z',
-      timeZone: timezone,
-      items: calendars.filter(c => c.isChecked).map(c => ({ id: c.id })),
-    })
-      .then(response => {
-        const availabilities = response.result.calendars ? Object.values(response.result.calendars).flatMap(cal => cal.busy.map(a => ({
-          start: new Date(a.start).valueOf(),
-          end: new Date(a.end).valueOf(),
-        }))) : []
-
-        onImport(times.filter((_, i) => !availabilities.some(a => epochTimes[i] >= a.start && epochTimes[i] < a.end)))
-        setIsLoadingAvailability(false)
-      }, e => {
-        console.error(e)
-        setIsLoadingAvailability(false)
+    try {
+      const { result } = await gapi.client.calendar.freebusy.query({
+        timeMin: timeStart.toInstant().toString(),
+        timeMax: timeEnd.toInstant().toString(),
+        timeZone: timezone,
+        items: selected.map(calendar => ({ id: calendar.id })),
       })
-  }, [calendars])
+      const busy = selected.flatMap(({ id }) => {
+        const calendar = result.calendars?.[id]
+        if (!calendar || calendar.errors?.length) throw new Error('Calendar data unavailable')
+        return (calendar.busy ?? []).map(period => ({
+          start: Date.parse(period.start),
+          end: Date.parse(period.end),
+        }))
+      })
+      const quarterHour = 15 * 60 * 1000
+      onImport(times.filter((_, i) => !busy.some(period =>
+        epochTimes[i] < period.end && epochTimes[i] + quarterHour > period.start,
+      )))
+    } catch {
+      setError(t('you.integration.failed'))
+    } finally {
+      setIsLoadingAvailability(false)
+    }
+  }
 
   return <>
+    <ErrorAlert onClose={() => setError('')}>{error}</ErrorAlert>
     {!calendars && <Button
       onClick={() => {
         if (!canLoad) {

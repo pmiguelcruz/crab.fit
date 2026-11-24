@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { isKeyOfObject } from '@giraugh/tools'
 import { maps } from 'hue-map'
 import { MapKey } from 'hue-map/dist/maps'
 import { Settings as SettingsIcon } from 'lucide-react'
 
 import SelectField from '/src/components/SelectField/SelectField'
 import ToggleField from '/src/components/ToggleField/ToggleField'
+import { useCalendarSettings } from '/src/hooks/useCalendarSettings'
 import { useTranslation } from '/src/i18n/client'
 import { languageDetails } from '/src/i18n/options'
 import { useStore } from '/src/stores'
@@ -23,6 +23,7 @@ const Settings = () => {
 
   const store = useStore(useSettingsStore, state => state)
 
+  const { weekStart, timeFormat } = useCalendarSettings(i18n.language)
   const modalRef = useRef<HTMLDialogElement>(null)
   const [isOpen, _setIsOpen] = useState(false)
   const setIsOpen = useCallback((shouldOpen: boolean) => {
@@ -76,7 +77,7 @@ const Settings = () => {
               'Sunday': t('options.weekStart.options.Sunday'),
               'Monday': t('options.weekStart.options.Monday'),
             }}
-            value={store.weekStart === 0 ? 'Sunday' : 'Monday'}
+            value={weekStart === 0 ? 'Sunday' : 'Monday'}
             onChange={value => store.setWeekStart(value === 'Sunday' ? 0 : 1)}
           />
 
@@ -87,7 +88,7 @@ const Settings = () => {
               '12h': t('options.timeFormat.options.12h'),
               '24h': t('options.timeFormat.options.24h'),
             }}
-            value={store.timeFormat ?? '12h'}
+            value={timeFormat}
             onChange={value => store.setTimeFormat(value)}
           />
 
@@ -141,12 +142,6 @@ const Settings = () => {
             isSmall
             value={i18n.language}
             onChange={e => {
-              // Set language defaults
-              if (isKeyOfObject(e.target.value, languageDetails)) {
-                store.setTimeFormat(languageDetails[e.target.value].timeFormat)
-                store.setWeekStart(languageDetails[e.target.value].weekStart)
-              }
-
               i18n.changeLanguage(e.target.value).then(() => router.refresh())
             }}
           />

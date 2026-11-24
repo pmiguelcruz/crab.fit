@@ -51,8 +51,7 @@ const get = async <S extends z.Schema>(url: string, schema: S, auth?: string, ne
     cache: nextOptions ? undefined : 'no-store',
     next: nextOptions,
   })
-    .catch(console.warn)
-  if (!res?.ok) throw res
+  if (!res.ok) throw res
   return schema.parse(await res.json())
 }
 
@@ -65,8 +64,7 @@ const post = async <S extends z.Schema>(url: string, schema: S, input: unknown, 
     },
     body: JSON.stringify(input),
   })
-    .catch(console.warn)
-  if (!res?.ok) throw res
+  if (!res.ok) throw res
   return schema.parse(await res.json())
 }
 

@@ -77,6 +77,7 @@ const Login = ({ eventId, user, disabled, onChange }: LoginProps) => {
       <TextField
         label={t('form.name')}
         type="text"
+        autoComplete="username"
         isInline
         required
         disabled={!eventId}
@@ -86,6 +87,7 @@ const Login = ({ eventId, user, disabled, onChange }: LoginProps) => {
       <TextField
         label={t('form.password')}
         type="password"
+        autoComplete="current-password"
         isInline
         disabled={!eventId}
         {...register('password')}

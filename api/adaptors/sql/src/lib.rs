@@ -3,7 +3,11 @@ use std::{env, error::Error};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use common::{Adaptor, Event, Person, Stats};
-use entity::{event, person, stats};
+use entity::{
+    event, person,
+    prelude::{Event as EventEntity, Person as PersonEntity, Stats as StatsEntity},
+    stats,
+};
 use migration::{Migrator, MigratorTrait};
 use sea_orm::{
     strum::Display,
@@ -49,12 +53,12 @@ impl Adaptor for SqlAdaptor {
 
     async fn get_people(&self, event_id: String) -> Result<Option<Vec<Person>>, Self::Error> {
         // TODO: optimize into one query
-        let event_row = event::Entity::find_by_id(event_id).one(&self.db).await?;
+        let event_row = EventEntity::find_by_id(event_id).one(&self.db).await?;
 
         Ok(match event_row {
             Some(event) => Some(
                 event
-                    .find_related(person::Entity)
+                    .find_related(PersonEntity)
                     .all(&self.db)
                     .await?
                     .into_iter()
@@ -79,7 +83,7 @@ impl Adaptor for SqlAdaptor {
         };
 
         // Check if the event exists
-        if event::Entity::find_by_id(event_id.clone())
+        if EventEntity::find_by_id(event_id.clone())
             .one(&self.db)
             .await?
             .is_none()
@@ -88,7 +92,7 @@ impl Adaptor for SqlAdaptor {
         }
 
         Ok(Some(
-            match person::Entity::find_by_id((person.name, event_id))
+            match PersonEntity::find_by_id((person.name, event_id))
                 .one(&self.db)
                 .await?
             {
@@ -99,7 +103,7 @@ impl Adaptor for SqlAdaptor {
     }
 
     async fn get_event(&self, id: String) -> Result<Option<Event>, Self::Error> {
-        let existing_event = event::Entity::find_by_id(id).one(&self.db).await?;
+        let existing_event = EventEntity::find_by_id(id).one(&self.db).await?;
 
         // Mark as visited
         if let Some(event) = existing_event.clone() {
@@ -127,7 +131,7 @@ impl Adaptor for SqlAdaptor {
     }
 
     async fn list_events(&self) -> Result<Vec<Event>, Self::Error> {
-        Ok(event::Entity::find()
+        Ok(EventEntity::find()
             .all(&self.db)
             .await?
             .into_iter()
@@ -141,7 +145,7 @@ impl Adaptor for SqlAdaptor {
         name: String,
         times: Option<Vec<String>>,
     ) -> Result<Option<Event>, Self::Error> {
-        let Some(event) = event::Entity::find_by_id(id).one(&self.db).await? else {
+        let Some(event) = EventEntity::find_by_id(id).one(&self.db).await? else {
             return Ok(None);
         };
         let mut event: event::ActiveModel = event.into();
@@ -155,11 +159,11 @@ impl Adaptor for SqlAdaptor {
     async fn delete_event(&self, id: String) -> Result<bool, Self::Error> {
         let txn = self.db.begin().await?;
         // Older SQLite databases may have been created without the foreign key.
-        person::Entity::delete_many()
+        PersonEntity::delete_many()
             .filter(person::Column::EventId.eq(&id))
             .exec(&txn)
             .await?;
-        let result = event::Entity::delete_by_id(id).exec(&txn).await?;
+        let result = EventEntity::delete_by_id(id).exec(&txn).await?;
         txn.commit().await?;
         Ok(result.rows_affected > 0)
     }
@@ -170,7 +174,7 @@ impl Adaptor for SqlAdaptor {
             .transaction::<_, (i64, i64), DbErr>(|t| {
                 Box::pin(async move {
                     // Get events older than the cutoff date
-                    let old_events = event::Entity::find()
+                    let old_events = EventEntity::find()
                         .filter(event::Column::VisitedAt.lt(cutoff.naive_utc()))
                         .all(t)
                         .await?;
@@ -179,7 +183,7 @@ impl Adaptor for SqlAdaptor {
                     let mut people_deleted: i64 = 0;
                     // TODO: run concurrently
                     for e in old_events.iter() {
-                        let people_delete_result = person::Entity::delete_many()
+                        let people_delete_result = PersonEntity::delete_many()
                             .filter(person::Column::EventId.eq(&e.id))
                             .exec(t)
                             .await?;
@@ -187,7 +191,7 @@ impl Adaptor for SqlAdaptor {
                     }
 
                     // Delete events
-                    let event_delete_result = event::Entity::delete_many()
+                    let event_delete_result = EventEntity::delete_many()
                         .filter(event::Column::VisitedAt.lt(cutoff.naive_utc()))
                         .exec(t)
                         .await?;
@@ -206,7 +210,7 @@ impl Adaptor for SqlAdaptor {
 
 // Get the current stats as an ActiveModel
 async fn get_stats_row(db: &DatabaseConnection) -> Result<stats::ActiveModel, DbErr> {
-    let current_stats = stats::Entity::find().one(db).await?;
+    let current_stats = StatsEntity::find().one(db).await?;
 
     Ok(match current_stats {
         Some(model) => model.into(),
@@ -228,14 +232,13 @@ impl SqlAdaptor {
             .await
             .expect("Failed to connect to SQL database");
         println!(
-            "{} Connected to database at {}",
+            "{} Connected to database",
             match db {
                 DatabaseConnection::SqlxMySqlPoolConnection(_) => "🐬",
                 DatabaseConnection::SqlxPostgresPoolConnection(_) => "🐘",
                 DatabaseConnection::SqlxSqlitePoolConnection(_) => "🪶",
                 DatabaseConnection::Disconnected => panic!("Failed to connect to SQL database"),
             },
-            connection_string
         );
 
         // Setup tables

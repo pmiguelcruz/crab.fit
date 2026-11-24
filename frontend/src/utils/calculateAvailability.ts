@@ -23,11 +23,18 @@ interface AvailabilityInfo {
  * group availability for each date passed in.
  */
 export const calculateAvailability = (dates: string[], people: Person[]): AvailabilityInfo => {
-  let min = 0
-  let max = people.length
+  let min = dates.length ? people.length : 0
+  let max = 0
+
+  const byDate = new Map(dates.map(date => [date, [] as string[]]))
+  for (const person of people) {
+    for (const date of new Set(person.availability)) {
+      byDate.get(date)?.push(person.name)
+    }
+  }
 
   const availabilities: Availability[] = dates.map(date => {
-    const names = people.flatMap(p => p.availability.some(d => d === date) ? [p.name] : [])
+    const names = byDate.get(date) ?? []
     if (names.length < min) {
       min = names.length
     }

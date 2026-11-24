@@ -4,9 +4,8 @@ import { Temporal } from '@js-temporal/polyfill'
 import { AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react'
 
 import Button from '/src/components/Button/Button'
+import { useCalendarSettings } from '/src/hooks/useCalendarSettings'
 import { useTranslation } from '/src/i18n/client'
-import { useStore } from '/src/stores'
-import useSettingsStore from '/src/stores/settingsStore'
 import { getWeekdayNames, makeClass } from '/src/utils'
 
 import styles from './Month.module.scss'
@@ -20,7 +19,7 @@ interface MonthProps {
 const Month = ({ value, onChange }: MonthProps) => {
   const { t, i18n } = useTranslation('home')
 
-  const weekStart = useStore(useSettingsStore, state => state.weekStart) ?? 0
+  const { weekStart } = useCalendarSettings(i18n.language)
 
   const now = useMemo(() => Temporal.Now.plainDateISO(), [])
   const [page, setPage] = useState<Temporal.PlainYearMonth>(now.toPlainYearMonth())
@@ -106,7 +105,7 @@ const Month = ({ value, onChange }: MonthProps) => {
             document.addEventListener('pointerup', handleFinishSelection, { once: true })
           }}
           onPointerEnter={() => {
-            if (mode) {
+            if (mode.current) {
               const found = []
               for (let cy = Math.min(startPos.current.y, y); cy < Math.max(startPos.current.y, y) + 1; cy++) {
                 for (let cx = Math.min(startPos.current.x, x); cx < Math.max(startPos.current.x, x) + 1; cx++) {
@@ -140,8 +139,8 @@ interface Day {
 /** Calculate the dates to show for the month in a 2d array */
 const calculateMonth = (month: Temporal.PlainYearMonth, weekStart: 0 | 1, locale: string) => {
   const today = Temporal.Now.plainDateISO()
-  const daysBefore = month.toPlainDate({ day: 1 }).dayOfWeek - weekStart
-  const daysAfter = 6 - month.toPlainDate({ day: month.daysInMonth }).dayOfWeek + weekStart
+  const daysBefore = (month.toPlainDate({ day: 1 }).dayOfWeek - weekStart + 7) % 7
+  const daysAfter = (7 - (daysBefore + month.daysInMonth) % 7) % 7
 
   const dates: Day[][] = []
   let curDate = month.toPlainDate({ day: 1 }).subtract({ days: daysBefore })

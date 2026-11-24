@@ -3,7 +3,7 @@
 [![Frontend Checks](https://github.com/GRA0007/crab.fit/actions/workflows/check_frontend.yml/badge.svg)](https://github.com/GRA0007/crab.fit/actions/workflows/check_frontend.yml)
 [![API Checks](https://github.com/GRA0007/crab.fit/actions/workflows/check_api.yml/badge.svg)](https://github.com/GRA0007/crab.fit/actions/workflows/check_api.yml)
 
-Align your schedules to find the perfect time that works for everyone.
+[Open Crab Fit](https://crab.fit/) to align your schedules and find a time that works for everyone.
 Open-source and licensed under the [GNU GPLv3](./LICENSE).
 
 ### ⭐️ Bugs or feature requests

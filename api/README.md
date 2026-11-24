@@ -54,3 +54,15 @@ availability and its `submitted_at` UTC timestamp for the browser receipt.
 Event passwords remain optional, with existing passwords required at sign-in.
 Sessions are held by the API process. If running multiple API instances,
 route a session's requests to the same instance.
+
+### Self-hosted URLs and listening address
+
+Set the API's `FRONTEND_URL` to the browser-facing frontend origin, for example
+`https://meet.example.org`, with no path or trailing slash. Configure
+`NEXT_PUBLIC_API_URL` when building the frontend. It must be reachable from
+both participants' browsers and the frontend server, for example
+`https://api.meet.example.org`. Share links use the frontend origin displayed
+in the browser.
+
+The API listens on `0.0.0.0:3000` by default. Set `LISTEN_ADDR` to override
+the IP address and port, for example `127.0.0.1:3000` for local development.

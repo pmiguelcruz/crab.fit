@@ -16,9 +16,9 @@
 
     "name": "Your name",
     "password": "Password (optional)",
-    "button": "Login",
+    "button": "Sign in",
     "logout_button": "Sign out",
-    "info": "These details are only for this event. Use a password to prevent others from changing your availability.",
+    "info": "Sign in with a name for this event. No account is required. Use a password to prevent others from changing your availability.",
 
     "timezone": "Your time zone",
 
@@ -37,6 +37,9 @@
   },
   "error": {
     "title": "Event not found",
+    "unavailable_title": "Could not load the event",
+    "unavailable_body": "The event service is temporarily unavailable.",
+    "retry": "Try again",
     "body": "Check that the url you entered is correct. Note that to protect your privacy, events are deleted after 3 months of inactivity."
   },
 
@@ -47,6 +50,11 @@
   },
 
   "group": {
+    "calendar": "Availability calendar",
+    "all_people": "Show everyone",
+    "no_people": "Hide everyone",
+    "isolate": "Show only one person",
+    "choose_person": "Choose a person",
     "legend_tooltip": "Click to highlight highest availability",
     "info1": "Hover or tap the calendar below to see who is available, and click to copy details about a time slot",
     "info2": "Click the names below to view people individually",
@@ -67,7 +75,7 @@
     "receipt_empty": "No times selected."
   },
   "you": {
-    "info": "Click and drag the calendar below to set your availabilities",
+    "info": "Click and drag to choose times, then submit your availability.",
     "select_all": "Select all",
     "select_none": "Select none",
     "select_invert": "Invert selection",
@@ -78,7 +86,8 @@
     "integration": {
       "logout": "log out",
       "close": "close",
-      "info": "Importing will overwrite your current availability",
+      "info": "Importing replaces your current draft.",
+      "failed": "Could not read availability from the selected calendars. Try again.",
       "button": "Import availability"
     }
   }

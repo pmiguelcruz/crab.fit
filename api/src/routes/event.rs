@@ -61,16 +61,33 @@ pub async fn create_event<A: Adaptor>(
     extract::State(state): State<A>,
     Json(input): Json<EventInput>,
 ) -> Result<(StatusCode, Json<EventResponse>), ApiError<A>> {
+    if !valid_times(&input.times) || input.timezone.parse::<chrono_tz::Tz>().is_err() {
+        return Err(ApiError::InvalidInput);
+    }
     let adaptor = &state.lock().await.adaptor;
 
     // Get the current timestamp
     let now = chrono::offset::Utc::now();
 
     // Generate a name if none provided
-    let name = match input.name {
-        Some(x) if !x.is_empty() => x.trim().to_string(),
+    let name = match input.name.as_deref().map(str::trim) {
+        Some(name) if !name.is_empty() => name.to_owned(),
         _ => generate_name(),
     };
+
+    if name.chars().count() > 255 || name.chars().any(char::is_control) {
+        return Err(ApiError::InvalidInput);
+    }
+
+    let mut times = input.times;
+    times.sort_unstable();
+    times.dedup();
+    // Put specific-date slots in chronological order for calendar imports.
+    if times[0].len() == 13 {
+        times.sort_by_cached_key(|time| {
+            format!("{}{}{}{}", &time[9..], &time[7..9], &time[5..7], &time[..4])
+        });
+    }
 
     // Generate an ID
     let mut id = generate_id(&name);
@@ -91,7 +108,7 @@ pub async fn create_event<A: Adaptor>(
             name,
             created_at: now,
             visited_at: now,
-            times: input.times,
+            times,
             timezone: input.timezone,
         })
         .await
@@ -125,6 +142,7 @@ fn generate_id(name: &str) -> String {
     if id.replace('-', "").is_empty() {
         id = encode_name(generate_name());
     }
+    id.truncate(248);
     let number = thread_rng().gen_range(100000..=999999);
     format!("{}-{}", id, number)
 }
@@ -137,4 +155,62 @@ fn encode_name(name: String) -> String {
         .replace(|c: char| !c.is_ascii_alphanumeric() && c != ' ', "");
     let re = Regex::new(r"\s+").unwrap();
     re.replace_all(&pc, "-").to_string()
+}
+
+pub(super) fn valid_times(times: &[String]) -> bool {
+    let Some(first) = times.first() else {
+        return false;
+    };
+    times.iter().all(|time| {
+        if time.len() != first.len() || !time.is_ascii() {
+            return false;
+        }
+        let Some((clock, date)) = time.split_once('-') else {
+            return false;
+        };
+        if clock.len() != 4
+            || !clock.bytes().all(|b| b.is_ascii_digit())
+            || chrono::NaiveTime::parse_from_str(clock, "%H%M").is_err()
+        {
+            return false;
+        }
+        match date.as_bytes() {
+            [b'0'..=b'6'] => true,
+            digits if digits.len() == 8 && digits.iter().all(u8::is_ascii_digit) => {
+                chrono::NaiveDate::parse_from_str(date, "%d%m%Y").is_ok()
+            }
+            _ => false,
+        }
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::valid_times;
+
+    #[test]
+    fn validates_specific_dates_and_recurring_weekdays() {
+        for valid in [
+            vec!["0000-0", "2315-6"],
+            vec!["0945-29022028", "1215-01032028"],
+        ] {
+            assert!(valid_times(
+                &valid.into_iter().map(str::to_owned).collect::<Vec<_>>()
+            ));
+        }
+        for invalid in [
+            vec![],
+            vec!["2400-1"],
+            vec!["0960-3"],
+            vec!["0900-7"],
+            vec!["900-1"],
+            vec!["0900-1", "0900-01032028"],
+            vec!["0900-29022027"],
+            vec!["0900-31042028"],
+        ] {
+            assert!(!valid_times(
+                &invalid.into_iter().map(str::to_owned).collect::<Vec<_>>()
+            ));
+        }
+    }
 }

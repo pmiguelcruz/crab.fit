@@ -1,4 +1,5 @@
-import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Temporal } from '@js-temporal/polyfill'
 
 import Button from '/src/components/Button/Button'
 import Content from '/src/components/Content/Content'
@@ -35,6 +36,12 @@ const AvailabilityEditor = ({ eventId, times, timezone, value = [], onChange, ta
   const startPos = useRef({ x: 0, y: 0 })
   const mode = useRef<'add' | 'remove'>()
 
+  const dateBounds = useMemo(() => {
+    if (times[0]?.length !== 13) return
+    const dates = times.map(parseSpecificDate).sort(Temporal.ZonedDateTime.compare)
+    return { start: dates[0], end: dates[dates.length - 1].add({ minutes: 15 }) }
+  }, [times])
+
   // Create the colour palette
   const palette = usePalette(2)
 
@@ -67,12 +74,12 @@ const AvailabilityEditor = ({ eventId, times, timezone, value = [], onChange, ta
         <Button isSmall onClick={selectInvert} title="Ctrl + I (⌘ I)">{t('you.select_invert')}</Button>
       </div>
     </Content>
-    {times[0]?.length === 13 && <Content>
+    {dateBounds && <Content>
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
         <GoogleCalendar
           timezone={timezone}
-          timeStart={parseSpecificDate(times[0])}
-          timeEnd={parseSpecificDate(times[times.length - 1]).add({ minutes: 15 })}
+          timeStart={dateBounds.start}
+          timeEnd={dateBounds.end}
           times={times}
           onImport={onChange}
         />
@@ -85,7 +92,7 @@ const AvailabilityEditor = ({ eventId, times, timezone, value = [], onChange, ta
     </Content>}
 
     <div className={viewerStyles.wrapper}>
-      <div>
+      <div tabIndex={0} role="region" aria-label={t('group.calendar')}>
         <div className={viewerStyles.heatmap}>
           <div className={viewerStyles.timeLabels}>
             {table?.rows.map((row, i) =>
@@ -99,8 +106,10 @@ const AvailabilityEditor = ({ eventId, times, timezone, value = [], onChange, ta
 
           {table?.columns.map((column, x) => <Fragment key={x}>
             {column ? <div className={viewerStyles.dateColumn}>
-              {column.header.dateLabel && <label className={viewerStyles.dateLabel}>{column.header.dateLabel}</label>}
-              <label className={viewerStyles.dayLabel}>{column.header.weekdayLabel}</label>
+              <div className={viewerStyles.dateHeading}>
+                {column.header.dateLabel && <span className={viewerStyles.dateLabel}>{column.header.dateLabel}</span>}
+                <span className={viewerStyles.dayLabel}>{column.header.weekdayLabel}</span>
+              </div>
 
               <div
                 className={viewerStyles.times}
