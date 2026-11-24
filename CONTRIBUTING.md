@@ -41,9 +41,10 @@ For code-specific documentation, please see the README files in the repo.
 
 ### Browser Extension
 
-The Crab Fit browser extension is currently an iFrame that points to `/create` on the frontend. Load the `browser-extension` directory as an unpacked extension. Open its extension settings and save `http://localhost:1234`, then open the extension popup.
-
-Note that you can't just visit the url directly, as it will redirect to the full create form if not running within an iFrame.
+Load the `browser-extension` directory as an unpacked extension. Open its
+settings and save `http://localhost:1234`, then open the toolbar popup to
+test saving and sharing poll links. **Create a poll** opens the creation form
+in a browser tab at the configured frontend origin.
 
 ## Pull Requests
 

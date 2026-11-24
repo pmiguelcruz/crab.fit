@@ -4,7 +4,32 @@ This is the frontend for Crab Fit, written in TypeScript and SCSS, using Next.js
 
 ## Environment
 
-Default environment variables are provided in `.env.local`. This should work out of the box while developing with the API. To change or add variables, create a `.env` file which will override any values in `.env.local`.
+The checked-in `.env.local` sets the local API URL. Add optional settings to
+the git-ignored `frontend/.env` file. For a different API URL, export
+`NEXT_PUBLIC_API_URL` before starting or building the frontend. Restart the
+development server or rebuild after changing these values.
+
+## Importing Google Calendar availability
+
+Enable the Google Calendar API in a Google Cloud project. Create a web OAuth
+client and a browser API key restricted to the Calendar API and the frontend
+website. For local OAuth, register both `http://localhost` and
+`http://localhost:1234` as authorized JavaScript origins. Use the actual
+frontend port if it differs. If the app is in OAuth testing mode, add the
+account used for testing as a test user. Crab Fit requests the
+`https://www.googleapis.com/auth/calendar.readonly` scope.
+
+```env
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-web-client-id.apps.googleusercontent.com
+NEXT_PUBLIC_GOOGLE_API_KEY=your-restricted-browser-key
+```
+
+On a timed poll with calendar dates, sign in to the poll, then choose
+**Sync with Google Calendar → Continue with Google**. Select calendars and
+choose **Import availability**. Review and submit the imported choices to
+save them.
+
+[Google OAuth client setup](https://developers.google.com/identity/oauth2/web/guides/get-google-api-clientid)
 
 ## Using VSCode
 

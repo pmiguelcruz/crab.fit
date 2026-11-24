@@ -10,9 +10,22 @@ import { allowUrlToWrap, parseSpecificDate } from '/src/utils'
 import styles from './GoogleCalendar.module.scss'
 
 const [clientId, apiKey] = [process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID, process.env.NEXT_PUBLIC_GOOGLE_API_KEY]
+const googleRequestTimeout = 15000
 
 const scriptLoads = new Map<string, Promise<void>>()
 let calendarInitialization: Promise<void> | undefined
+
+const withDeadline = async <T,>(request: PromiseLike<T>): Promise<T> => {
+  let timer: number | undefined
+  const deadline = new Promise<never>((_, reject) => {
+    timer = window.setTimeout(() => reject(new Error('Google Calendar request timed out')), googleRequestTimeout)
+  })
+  try {
+    return await Promise.race([request, deadline])
+  } finally {
+    window.clearTimeout(timer)
+  }
+}
 
 const loadScript = (src: string) => {
   const existing = scriptLoads.get(src)
@@ -26,7 +39,7 @@ const loadScript = (src: string) => {
       script.remove()
       reject(new Error('Could not load Google Calendar'))
     }
-    const timeout = window.setTimeout(fail, 15000)
+    const timeout = window.setTimeout(fail, googleRequestTimeout)
     script.onload = () => {
       window.clearTimeout(timeout)
       resolve()
@@ -48,9 +61,9 @@ const loadCalendarClient = (key: string) => {
       gapi.load('client', {
         callback: () => {
           // Discovery is public. Apply the configured key to Calendar requests after loading it.
-          gapi.client.init({
+          withDeadline(gapi.client.init({
             discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'],
-          }).then(() => {
+          })).then(() => {
             gapi.client.setApiKey(key)
           }).then(() => resolve(), reject)
         },
@@ -78,10 +91,10 @@ const listCalendars = async (isActive: () => boolean) => {
   const cursors = new Set<string>()
   let pageToken: string | undefined
   do {
-    const { result } = await gapi.client.calendar.calendarList.list({
+    const { result } = await withDeadline(gapi.client.calendar.calendarList.list({
       minAccessRole: 'freeBusyReader',
       pageToken,
-    })
+    }))
     if (!isActive()) return []
     for (const item of result.items ?? []) {
       calendars.set(item.id, {
@@ -221,13 +234,13 @@ const GoogleCalendar = ({ timezone, timeStart, timeEnd, times, interval, onImpor
       const busy: { start: number; end: number }[] = []
       for (let index = 0; index < selected.length; index += calendarsPerFreeBusyRequest) {
         const items = selected.slice(index, index + calendarsPerFreeBusyRequest).map(({ id }) => ({ id }))
-        const { result } = await gapi.client.calendar.freebusy.query({
+        const { result } = await withDeadline(gapi.client.calendar.freebusy.query({
           timeMin,
           timeMax,
           timeZone: timezone,
           calendarExpansionMax: calendarsPerFreeBusyRequest,
           items,
-        })
+        }))
         if (!isActive()) return
         for (const { id } of items) {
           const calendar = result.calendars?.[id]
