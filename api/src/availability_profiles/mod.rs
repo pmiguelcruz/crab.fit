@@ -269,20 +269,6 @@ impl AvailabilityProfiles {
         tx.commit().await?;
         Ok(())
     }
-
-    pub async fn prune(&self, active: &HashSet<String>) -> Result<(), ProfileError> {
-        let mut tx = self.db.begin().await?;
-        let events: Vec<String> = sqlx::query_scalar(
-            "SELECT event_id FROM linked_votes UNION SELECT event_id FROM finalized_polls",
-        )
-        .fetch_all(&mut *tx)
-        .await?;
-        for event in events.iter().filter(|id| !active.contains(*id)) {
-            remove_event(&mut tx, event).await?;
-        }
-        tx.commit().await?;
-        Ok(())
-    }
 }
 
 async fn authorize_link(

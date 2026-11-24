@@ -35,10 +35,6 @@ pub trait Adaptor: Send + Sync {
         groups: Option<Vec<EventGroup>>,
     ) -> Result<Option<Event>, Self::Error>;
     async fn delete_event(&self, id: String) -> Result<bool, Self::Error>;
-
-    /// Delete events older than a cutoff date, as well as any associated people
-    /// Returns the amount of events and people deleted
-    async fn delete_events(&self, cutoff: DateTime<Utc>) -> Result<Stats, Self::Error>;
 }
 
 #[derive(Clone)]

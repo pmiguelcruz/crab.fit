@@ -2,7 +2,6 @@
 User-agent: *
 Allow: /$
 Allow: /how-to$
-Allow: /privacy$
 Allow: /*.xml$
 Allow: /*.js$
 Allow: /*.css$

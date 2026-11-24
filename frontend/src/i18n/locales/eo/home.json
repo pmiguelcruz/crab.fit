@@ -1,6 +1,10 @@
 {
   "create": "KREU",
   "recently_visited": "Lastatempe vizitita",
+  "footer": {
+    "about": "Pri",
+    "admin": "Administri"
+  },
   "event_history": {
     "title": "Viaj eventoj",
     "empty": "Via eventolisto estas malplena. Malfermu kundividitan ligilon al evento por indiki kiam vi estas libera. La evento aperos ĉi tie la venontan fojon, kiam vi vizitos per ĉi tiu retumilo.",
@@ -70,21 +74,5 @@
       "no_time": "Neniu tempo estas elektita",
       "unknown": "Io misfunkciis. Bonvolu reprovi poste."
     }
-  },
-  "about": {
-    "name": "Pri Crab Fit",
-    "events": "Eventoj kreitaj",
-    "availabilities": "Disponebloj eniris",
-    "content": {
-      "p1": "Crab Fit helpas vin adapti vian eventon al ĉies horaroj. Simple kreu eventon supre kaj sendu la ligon al ĉiuj partoprenantoj. Rezultoj ĝisdatigas vive kaj vi povos vidi varmmapon pri kiam ĉiuj estas liberaj. <1/><2>Lernu pli pri kiel Crab Fit</2>.",
-      "p3": "Kreita de <1>Ben Grant</1>, Crab Fit estas la nuntempa solvo por viaj grupaj eventoplanaj debatoj.",
-      "p4": "La kodo por Crab Fit estas malfermfonta, se vi trovas problemojn aŭ volas kontribui, vi povas viziti la <1>deponejon</1>. Uzante Crab Fit vi konsentas pri la <3>privateca politiko</3>.",
-      "p6": "Por protekti vian privatecon, eventoj estas forigitaj post 3 monatoj da neaktiveco, kaj ĉiuj pasvortoj estas sekure hakitaj.",
-      "p5": "Konsideru donaci sube, se ĝi helpis vin, por ke Crab Fit povu resti senpaga por ĉiuj. 🦀"
-    },
-    "chrome_extension": "Akiru la Kroman Etendon",
-    "firefox_extension": "Akiru la Etendon de Firefox",
-    "safari_extension": "Akiru la Safari-Etendaĵon",
-    "android_app": "Elŝutu la Android-apon"
   }
 }

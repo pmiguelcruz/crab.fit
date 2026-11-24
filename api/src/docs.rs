@@ -1,8 +1,6 @@
 use crate::payloads;
 use crate::routes;
 
-use utoipa::openapi::security::ApiKey;
-use utoipa::openapi::security::ApiKeyValue;
 use utoipa::{
     openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme},
     Modify, OpenApi,
@@ -20,7 +18,6 @@ use utoipa::{
         routes::person::get_shared_emails,
         routes::person::get_person,
         routes::person::update_person,
-        routes::tasks::cleanup,
     ),
     components(schemas(
         payloads::StatsResponse,
@@ -37,7 +34,6 @@ use utoipa::{
         (name = "info"),
         (name = "event"),
         (name = "person"),
-        (name = "tasks"),
     ),
     modifiers(&SecurityAddon),
 )]
@@ -64,10 +60,6 @@ impl Modify for SecurityAddon {
         openapi.components.as_mut().unwrap().add_security_scheme(
             "participant-session",
             SecurityScheme::Http(HttpBuilder::new().scheme(HttpAuthScheme::Bearer).build()),
-        );
-        openapi.components.as_mut().unwrap().add_security_scheme(
-            "cron-key",
-            SecurityScheme::ApiKey(ApiKey::Header(ApiKeyValue::new("X-Cron-Key"))),
         );
     }
 }

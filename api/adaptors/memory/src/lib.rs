@@ -1,7 +1,7 @@
 use std::{collections::HashMap, error::Error, fmt::Display};
 
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use common::{Adaptor, Event, EventGroup, Person, Stats};
 use tokio::sync::Mutex;
 
@@ -143,40 +143,6 @@ impl Adaptor for MemoryAdaptor {
         state.people.retain(|(event_id, _), _| event_id != &id);
         Ok(deleted)
     }
-
-    async fn delete_events(&self, cutoff: DateTime<Utc>) -> Result<Stats, Self::Error> {
-        let mut state = self.state.lock().await;
-
-        // Delete events older than cutoff date
-        let mut deleted_event_ids: Vec<String> = Vec::new();
-        state.events = state
-            .events
-            .clone()
-            .into_iter()
-            .filter(|(id, event)| {
-                if event.visited_at >= cutoff {
-                    true
-                } else {
-                    deleted_event_ids.push(id.into());
-                    false
-                }
-            })
-            .collect();
-
-        let mut person_count = state.people.len() as i64;
-        state.people = state
-            .people
-            .clone()
-            .into_iter()
-            .filter(|((event_id, _), _)| !deleted_event_ids.contains(event_id))
-            .collect();
-        person_count -= state.people.len() as i64;
-
-        Ok(Stats {
-            event_count: deleted_event_ids.len() as i64,
-            person_count,
-        })
-    }
 }
 
 impl MemoryAdaptor {
@@ -213,7 +179,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn cleanup_keeps_responses_for_active_events() {
+    fn deleting_one_event_keeps_other_events_and_responses() {
         tokio::runtime::Runtime::new().unwrap().block_on(async {
             let store = MemoryAdaptor::new().await;
             let now = Utc::now();
@@ -251,20 +217,11 @@ mod tests {
                     .unwrap();
             }
 
-            let deleted = store
-                .delete_events(now - chrono::Duration::days(90))
-                .await
-                .unwrap();
-            assert_eq!(deleted.event_count, 1);
-            assert_eq!(deleted.person_count, 1);
-            assert!(store.get_people("old".into()).await.unwrap().is_none());
+            assert!(store.get_event("old".into()).await.unwrap().is_some());
+            assert!(store.delete_event("active".into()).await.unwrap());
+            assert!(store.get_people("active".into()).await.unwrap().is_none());
             assert_eq!(
-                store
-                    .get_people("active".into())
-                    .await
-                    .unwrap()
-                    .unwrap()
-                    .len(),
+                store.get_people("old".into()).await.unwrap().unwrap().len(),
                 1
             );
         });

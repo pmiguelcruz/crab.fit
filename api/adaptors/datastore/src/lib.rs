@@ -241,47 +241,6 @@ impl Adaptor for DatastoreAdaptor {
         client.delete(&key).await?;
         Ok(true)
     }
-
-    async fn delete_events(&self, cutoff: DateTime<Utc>) -> Result<Stats, Self::Error> {
-        let mut client = self.client.lock().await;
-
-        let mut keys_to_delete: Vec<Key> = client
-            .query(Query::new(EVENT_KIND).filter(Filter::LesserThan(
-                "visited".into(),
-                cutoff.timestamp().into_value(),
-            )))
-            .await?
-            .iter()
-            .map(|entity| entity.key().clone())
-            .collect();
-
-        let event_count = keys_to_delete.len() as i64;
-
-        let events_to_delete = keys_to_delete.clone();
-        for e in events_to_delete.iter() {
-            if let KeyID::StringID(id) = e.get_id() {
-                let mut event_people_to_delete: Vec<Key> = client
-                    .query(
-                        Query::new(PERSON_KIND)
-                            .filter(Filter::Equal("eventId".into(), id.clone().into_value())),
-                    )
-                    .await?
-                    .iter()
-                    .map(|entity| entity.key().clone())
-                    .collect();
-                keys_to_delete.append(&mut event_people_to_delete);
-            }
-        }
-
-        let person_count = keys_to_delete.len() as i64 - event_count;
-
-        client.delete_all(keys_to_delete).await?;
-
-        Ok(Stats {
-            event_count,
-            person_count,
-        })
-    }
 }
 
 impl DatastoreAdaptor {

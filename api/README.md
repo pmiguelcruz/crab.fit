@@ -45,18 +45,13 @@ See [adding an adaptor](adaptors/README.md#adding-an-adaptor) in the adaptors re
 
 In release mode, a `FRONTEND_URL` environment variable is required to correctly restrict cross-origin requests to the frontend.
 
-### Cleanup task
-
-The cleanup task at `/tasks/cleanup` requires an admin session or a matching
-`X-Cron-Key` header when the API has a `CRON_KEY` configured.
-
 ### Event management and participant sign-in
 
 This fork's admin PIN is sealed with AES-256-GCM in `src/admin_pin.sealed`.
 Supply the matching `ADMIN_PIN_KEY` as a 32-byte base64url value in the private
 API environment or in git-ignored `api/.env` during development. Keep that key
 outside the repository and the frontend environment. Admin sign-in is disabled
-when the key is absent. Open **About → Admin interface** to sign in.
+when the key is absent. Select **Admin** in the footer to sign in.
 Admin sessions expire after eight hours or an API restart. The API limits
 failed PIN attempts to five in a 15-minute window.
 
@@ -66,8 +61,9 @@ responses on overlapping slots. Creation, the full event list, edits, and
 deletion all require an admin session. New event links use random identifiers.
 The availability grid displays responses only
 on the current schedule. Duplicating an event gives its schedule a new
-link. An admin can remove individual participants or delete the event and
-all its responses. A signed-in participant may also remove their own response.
+link. Events stay in the configured store until an admin deletes them.
+An admin can remove individual participants. A signed-in participant may
+also remove their own response.
 
 Participant login at `GET /event/{event_id}/people/{person_name}` returns a
 one-hour token in the `token` field. Use it as the bearer credential for one

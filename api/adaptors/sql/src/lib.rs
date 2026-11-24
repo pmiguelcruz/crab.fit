@@ -186,45 +186,6 @@ impl Adaptor for SqlAdaptor {
         txn.commit().await?;
         Ok(result.rows_affected > 0)
     }
-
-    async fn delete_events(&self, cutoff: DateTime<Utc>) -> Result<Stats, Self::Error> {
-        let (event_count, person_count) = self
-            .db
-            .transaction::<_, (i64, i64), DbErr>(|t| {
-                Box::pin(async move {
-                    // Get events older than the cutoff date
-                    let old_events = EventEntity::find()
-                        .filter(event::Column::VisitedAt.lt(cutoff.naive_utc()))
-                        .all(t)
-                        .await?;
-
-                    // Delete people
-                    let mut people_deleted: i64 = 0;
-                    // TODO: run concurrently
-                    for e in old_events.iter() {
-                        let people_delete_result = PersonEntity::delete_many()
-                            .filter(person::Column::EventId.eq(&e.id))
-                            .exec(t)
-                            .await?;
-                        people_deleted += people_delete_result.rows_affected as i64;
-                    }
-
-                    // Delete events
-                    let event_delete_result = EventEntity::delete_many()
-                        .filter(event::Column::VisitedAt.lt(cutoff.naive_utc()))
-                        .exec(t)
-                        .await?;
-
-                    Ok((event_delete_result.rows_affected as i64, people_deleted))
-                })
-            })
-            .await?;
-
-        Ok(Stats {
-            event_count,
-            person_count,
-        })
-    }
 }
 
 // Get the current stats as an ActiveModel

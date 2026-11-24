@@ -1,4 +1,4 @@
-use std::{collections::HashSet, env, error::Error, str::FromStr, sync::Arc, time::Duration};
+use std::{env, error::Error, str::FromStr, sync::Arc, time::Duration};
 
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use chrono::Utc;
@@ -179,22 +179,6 @@ impl Notifications {
             .execute(&self.db)
             .await?;
         Ok(())
-    }
-
-    pub async fn prune(&self, current_events: &HashSet<String>) -> Result<(), sqlx::Error> {
-        let mut tx = self.db.begin().await?;
-        let mut subscribed_events: Vec<(String,)> =
-            sqlx::query_as("SELECT DISTINCT event_id FROM subscriptions")
-                .fetch_all(&mut *tx)
-                .await?;
-        subscribed_events.retain(|(id,)| !current_events.contains(id));
-        for (id,) in subscribed_events {
-            sqlx::query("DELETE FROM subscriptions WHERE event_id = ?")
-                .bind(id)
-                .execute(&mut *tx)
-                .await?;
-        }
-        tx.commit().await
     }
 
     pub async fn record_vote(

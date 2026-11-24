@@ -157,7 +157,6 @@ async fn main() {
             "/admin/events/:id/final-choice",
             post(admin::set_final_choice),
         )
-        .route("/tasks/cleanup", get(tasks::cleanup))
         .with_state(shared_state)
         .layer(rate_limit)
         .layer(cors)

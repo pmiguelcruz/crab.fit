@@ -69,6 +69,17 @@ body {
   --focus-ring: 2px solid var(--secondary);
 }
 
+.site-layout {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.site-layout > main {
+  flex: 1;
+}
+
 .light {
   color-scheme: light;
 

@@ -62,16 +62,9 @@ export const PersonResponse = z.object({
 })
 export type PersonResponse = z.infer<typeof PersonResponse>
 
-export const StatsResponse = z.object({
-  event_count: z.number(),
-  person_count: z.number(),
-  version: z.string(),
-})
-export type StatsResponse = z.infer<typeof StatsResponse>
-
 const apiReadTimeout = 15000
 
-const get = async <S extends z.Schema>(url: string, schema: S, auth?: string, nextOptions?: NextFetchRequestConfig): Promise<ReturnType<S['parse']>> => {
+const get = async <S extends z.Schema>(url: string, schema: S, auth?: string): Promise<ReturnType<S['parse']>> => {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), apiReadTimeout)
   try {
@@ -79,8 +72,7 @@ const get = async <S extends z.Schema>(url: string, schema: S, auth?: string, ne
       headers: {
         ...auth && { Authorization: `Bearer ${auth}` },
       },
-      cache: nextOptions ? undefined : 'no-store',
-      next: nextOptions,
+      cache: 'no-store',
       signal: controller.signal,
     })
     if (!res.ok) throw res
@@ -142,7 +134,6 @@ export const removeOwnResponse = (id: string, name: string, token: string) => re
 export const deleteEvent = (id: string, token: string) => remove(`/admin/events/${encodeURIComponent(id)}`, token)
 
 // Get
-export const getStats = () => get('/stats', StatsResponse, undefined, { revalidate: 60 })
 export const getEvent = (eventId: string) => get(eventPath(eventId), EventResponse)
 export const getPeople = (eventId: string, token: string) => get(`${eventPath(eventId)}/people`, PersonResponse.array(), token)
 export const getSharedEmails = (eventId: string, token: string) => get(`${eventPath(eventId)}/emails`, z.string().array(), token)
