@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { flip, offset, shift, useFloating } from '@floating-ui/react-dom'
 import { Temporal } from '@js-temporal/polyfill'
 
@@ -59,10 +59,15 @@ const AvailabilityViewer = ({ times, people, groups, datesOnly, table }: Availab
   // Create the colour palette
   const palette = usePalette(Math.max((max - min) + 1, 2))
 
-  // Reselect everyone if the amount of people changes
+  const previousNames = useRef(new Set(people.map(person => person.name)))
   useEffect(() => {
-    setFilteredPeople(people.map(p => p.name))
-  }, [people.length])
+    const names = people.map(person => person.name)
+    if (names.length !== previousNames.current.size || names.some(name => !previousNames.current.has(name))) {
+      previousNames.current = new Set(names)
+      setFilteredPeople(names)
+      setTempFocus(undefined)
+    }
+  }, [people])
 
   const heatmap = useMemo(() => table?.columns.map((column, x) => <Fragment key={x}>
     {column ? <div className={styles.dateColumn}>

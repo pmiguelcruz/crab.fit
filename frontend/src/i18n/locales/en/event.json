@@ -50,6 +50,9 @@
   },
 
   "group": {
+    "loading": "Loading saved responses…",
+    "load_failed": "Could not load saved responses.",
+    "refresh_failed": "Could not refresh availability. Showing the last loaded responses.",
     "calendar": "Availability calendar",
     "all_people": "Show everyone",
     "no_people": "Hide everyone",

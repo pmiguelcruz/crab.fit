@@ -43,6 +43,9 @@
     "group": "Disponeblo de la grupo"
   },
   "group": {
+    "loading": "Ŝargante la konservitajn respondojn…",
+    "load_failed": "Ne eblis ŝargi la konservitajn respondojn.",
+    "refresh_failed": "Ne eblis ĝisdatigi la disponeblon. Montriĝas la lastaj ŝargitaj respondoj.",
     "calendar": "Kalendaro de disponeblo",
     "all_people": "Montri ĉiujn",
     "no_people": "Kaŝi ĉiujn",

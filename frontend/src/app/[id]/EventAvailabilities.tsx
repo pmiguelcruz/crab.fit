@@ -33,12 +33,20 @@ interface EventAvailabilitiesProps {
   event?: EventResponse
 }
 
+interface GroupResults {
+  eventId: string
+  people?: PersonResponse[]
+  failed?: boolean
+}
+
 const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
   const { t, i18n } = useTranslation('event')
 
   const { weekStart, timeFormat } = useCalendarSettings(i18n.language)
 
-  const [people, setPeople] = useState<PersonResponse[]>([])
+  const [results, setResults] = useState<GroupResults>()
+  const [resultsRevision, setResultsRevision] = useState(0)
+  const currentResults = results?.eventId === event?.id ? results : undefined
   const size = event?.slot_size
   const datesOnly = size === 'day'
   const interval = datesOnly ? undefined : slotMinutes(size)
@@ -122,10 +130,22 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
   useEffect(() => {
     if (tab !== 'group' || !event) return
     let active = true
-    const refresh = () => {
-      getPeople(event.id)
-        .then(responses => { if (active) setPeople(responses) })
-        .catch(console.warn)
+    let fetching = false
+    const refresh = async () => {
+      if (fetching) return
+      fetching = true
+      try {
+        const people = await getPeople(event.id)
+        if (active) setResults({ eventId: event.id, people })
+      } catch {
+        if (active) setResults(previous => ({
+          eventId: event.id,
+          people: previous?.eventId === event.id ? previous.people : undefined,
+          failed: true,
+        }))
+      } finally {
+        fetching = false
+      }
     }
     refresh()
     const timer = event.shared_availability_available ? window.setInterval(() => {
@@ -135,7 +155,7 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
       active = false
       window.clearInterval(timer)
     }
-  }, [event, tab])
+  }, [event, resultsRevision, tab])
 
   const submit = async () => {
     if (!event || !user || submitting) return
@@ -321,13 +341,24 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
     {event?.notifications_available && <VoteNotifications key={event.id} eventId={event.id} />}
     {tab === 'group' ? <>
       {event && <SharedEmails key={`emails-${event.id}`} eventId={event.id} />}
-      <AvailabilityViewer
+      {currentResults?.failed && <Content>
+        <div className={styles.shareEmails}>
+          <span role="alert">{t(currentResults.people ? 'group.refresh_failed' : 'group.load_failed')}</span>
+          <Button isSmall isSecondary onClick={() => {
+            setResults(results => results && { ...results, failed: false })
+            setResultsRevision(revision => revision + 1)
+          }}>{t('error.retry')}</Button>
+        </div>
+      </Content>}
+      {!event || currentResults?.people ? <AvailabilityViewer
         times={expandedTimes}
-        people={people}
+        people={currentResults?.people ?? []}
         groups={event?.groups}
         datesOnly={datesOnly}
         table={table}
-      />
+      /> : !currentResults?.failed && <Content>
+        <p role="status">{t('group.loading')}</p>
+      </Content>}
     </> : user && <>
       {!!event?.groups?.length && <Content>
         <SelectField

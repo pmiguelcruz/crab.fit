@@ -39,7 +39,7 @@ On November 23, 2026, the upstream repository had 56 open issues. This records t
 
 - The fork distinguishes API outages from missing events and shares the current host. A Chromium fixture verified that retrying a recovered poll reloads it and a missing poll still shows its own error page. The original hosted failures remain unverified. [#356](https://github.com/GRA0007/crab.fit/issues/356), [#328](https://github.com/GRA0007/crab.fit/issues/328)
 - Calendar import waits for both Google libraries, uses the full poll range, and preserves drafts when selected calendars return errors. Chromium and WebKit verified both script orders and partially busy slots in a three-week fixture. A live authenticated Google Calendar test remains open. [#343](https://github.com/GRA0007/crab.fit/issues/343)
-- In-memory cleanup preserves participants for active polls. The older hosted data-loss report remains unverified. [#303](https://github.com/GRA0007/crab.fit/issues/303)
+- In-memory cleanup preserves participants for active polls. Chromium and WebKit verified that a failed response request shows a retry and preserves any results already loaded. The older hosted data-loss report remains unverified. [#303](https://github.com/GRA0007/crab.fit/issues/303)
 - The unpacked browser extension saved a self-hosted URL and loaded its poll creation form in Chromium and Firefox. The published Chrome link redirects to a generic store page. The Android setting needs the Android app source. [#335](https://github.com/GRA0007/crab.fit/issues/335), [#115](https://github.com/GRA0007/crab.fit/issues/115)
 
 ## Open work
