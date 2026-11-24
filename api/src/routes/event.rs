@@ -33,15 +33,20 @@ pub async fn get_event<A: Adaptor>(
     extract::State(state): State<A>,
     Path(event_id): Path<String>,
 ) -> ApiResult<EventResponse, A> {
-    let adaptor = &state.lock().await.adaptor;
+    let state = state.lock().await;
 
-    let event = adaptor
+    let event = state
+        .adaptor
         .get_event(event_id)
         .await
         .map_err(ApiError::AdaptorError)?;
 
     match event {
-        Some(event) => Ok(Json(event.into())),
+        Some(event) => {
+            let mut response = EventResponse::from(event);
+            response.notifications_available = state.notifications.is_some().then_some(true);
+            Ok(Json(response))
+        }
         None => Err(ApiError::NotFound),
     }
 }

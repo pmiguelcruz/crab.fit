@@ -244,6 +244,7 @@ mod tests {
                             tentative: vec![],
                             group_id: None,
                             shared_email: None,
+                            submitted_at: None,
                         },
                     )
                     .await

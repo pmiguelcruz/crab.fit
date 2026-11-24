@@ -334,11 +334,11 @@ impl From<EventGroup> for DatastoreGroup {
     }
 }
 
-fn optional_string(value: Option<Value>) -> Result<Option<String>, ConvertError> {
+fn optional_value<T: FromValue>(value: Option<Value>) -> Result<Option<T>, ConvertError> {
     match value {
         None | Some(Value::OptionValue(None)) => Ok(None),
-        Some(Value::OptionValue(Some(value))) => String::from_value(*value).map(Some),
-        Some(value) => String::from_value(value).map(Some),
+        Some(Value::OptionValue(Some(value))) => T::from_value(*value).map(Some),
+        Some(value) => T::from_value(value).map(Some),
     }
 }
 
@@ -351,7 +351,7 @@ impl FromValue for DatastoreEvent {
             });
         };
         // The SDK's generated decoder requires every property, even Option fields.
-        let slot_size = optional_string(properties.remove("slot_size"))?;
+        let slot_size = optional_value(properties.remove("slot_size"))?;
         let groups = properties
             .remove("groups")
             .map(Vec::from_value)
@@ -386,6 +386,8 @@ struct DatastorePerson {
     group_id: Option<String>,
     #[datastore(rename = "shared_email")]
     shared_email: Option<String>,
+    #[datastore(rename = "submitted_at")]
+    submitted_at: Option<i64>,
 }
 
 impl FromValue for DatastorePerson {
@@ -400,9 +402,10 @@ impl FromValue for DatastorePerson {
             .remove("tentative")
             .map(Vec::from_value)
             .transpose()?;
-        let password = optional_string(properties.remove("password"))?;
-        let group_id = optional_string(properties.remove("group_id"))?;
-        let shared_email = optional_string(properties.remove("shared_email"))?;
+        let password = optional_value(properties.remove("password"))?;
+        let group_id = optional_value(properties.remove("group_id"))?;
+        let shared_email = optional_value(properties.remove("shared_email"))?;
+        let submitted_at = optional_value(properties.remove("submitted_at"))?;
         let mut required = |name: &str| {
             properties
                 .remove(name)
@@ -417,6 +420,7 @@ impl FromValue for DatastorePerson {
             tentative: tentative.unwrap_or_default(),
             group_id,
             shared_email,
+            submitted_at,
         })
     }
 }
@@ -431,6 +435,7 @@ impl From<DatastorePerson> for Person {
             tentative: value.tentative,
             group_id: value.group_id,
             shared_email: value.shared_email,
+            submitted_at: value.submitted_at,
         }
     }
 }
@@ -446,6 +451,7 @@ impl DatastorePerson {
             tentative: person.tentative,
             group_id: person.group_id,
             shared_email: person.shared_email,
+            submitted_at: person.submitted_at,
         }
     }
 }
@@ -533,6 +539,7 @@ mod tests {
             tentative: vec!["0915-4".into()],
             group_id: Some("group-id".into()),
             shared_email: Some("ada@example.org".into()),
+            submitted_at: Some(10),
         };
         let Value::EntityValue(mut properties) = record.into_value() else {
             panic!("expected person properties");
@@ -542,16 +549,19 @@ mod tests {
         assert_eq!(saved.password.as_deref(), Some("saved-hash"));
         assert_eq!(saved.group_id.as_deref(), Some("group-id"));
         assert_eq!(saved.shared_email.as_deref(), Some("ada@example.org"));
+        assert_eq!(saved.submitted_at, Some(10));
 
         properties.remove("tentative");
         properties.remove("group_id");
         properties.remove("shared_email");
+        properties.remove("submitted_at");
         let legacy = DatastorePerson::from_value(Value::EntityValue(properties)).unwrap();
         assert!(legacy.tentative.is_empty());
         assert_eq!(legacy.availability, ["0900-4"]);
         assert_eq!(legacy.password.as_deref(), Some("saved-hash"));
         assert!(legacy.group_id.is_none());
         assert!(legacy.shared_email.is_none());
+        assert!(legacy.submitted_at.is_none());
     }
 
     #[test]

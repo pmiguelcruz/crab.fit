@@ -32,6 +32,7 @@ export const EventResponse = z.object({
   slot_size: z.enum(slotSizes).optional(),
   created_at: z.number(),
   groups: EventGroup.array().optional(),
+  notifications_available: z.boolean().optional(),
 })
 export type EventResponse = z.infer<typeof EventResponse>
 
@@ -124,6 +125,21 @@ export const getStats = () => get('/stats', StatsResponse, undefined, { revalida
 export const getEvent = (eventId: string) => get(eventPath(eventId), EventResponse)
 export const getPeople = (eventId: string) => get(`${eventPath(eventId)}/people`, PersonResponse.array())
 export const getSharedEmails = (eventId: string) => get(`${eventPath(eventId)}/emails`, z.string().array())
+export type NotificationMode = 'change' | 'responses' | 'quorum'
+type NotificationEnrollment = { mode: NotificationMode; email: string; count?: number }
+
+export const postVoteNotifications = async (
+  eventId: string,
+  request: NotificationEnrollment | { action: 'confirm' | 'unsubscribe'; token: string },
+) => {
+  const suffix = 'action' in request ? `/${request.action}` : ''
+  const response = await fetch(new URL(`${eventPath(eventId)}/notifications${suffix}`, API_BASE), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  })
+  if (!response.ok) throw response
+}
 export const getPerson = (eventId: string, personName: string, password?: string) => get(personPath(eventId, personName), PersonLogin, password && encodePassword(password))
 
 // Post

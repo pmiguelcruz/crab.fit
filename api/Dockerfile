@@ -7,10 +7,13 @@ ARG STORAGE_ADAPTOR=datastore-adaptor
 
 WORKDIR /usr/src/app
 COPY . .
-# Will build and cache the binary and dependent crates in release mode
+# Keep dependency artifacts cached. Refresh workspace inputs whenever this layer
+# runs so Cargo detects edits made during an earlier build.
 RUN --mount=type=cache,target=/usr/local/cargo,from=toolchain,source=/usr/local/cargo \
     --mount=type=cache,target=target \
-    cargo build --locked --release --features "$STORAGE_ADAPTOR" && mv ./target/release/crabfit-api ./api
+    find src common adaptors -type f -exec touch {} + \
+    && cargo build --locked --release --features "$STORAGE_ADAPTOR" \
+    && mv ./target/release/crabfit-api ./api
 
 # Runtime image
 FROM debian:bookworm-slim

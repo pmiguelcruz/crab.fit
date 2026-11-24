@@ -91,6 +91,23 @@ choice or send `null` to stop sharing. `GET /event/{id}/emails` lists the
 addresses that participants chose to share, with duplicates removed. Ordinary
 availability results and receipts exclude email addresses.
 
+### Vote notifications
+
+Set these variables to offer email subscriptions on poll pages:
+
+| Variable | Value |
+| -------- | ----- |
+| `NOTIFICATION_SMTP_URL` | An SMTP relay URL, such as `smtps://user:password@mail.example.org:465` or `smtp://mail.example.org:587?tls=required`. |
+| `NOTIFICATION_FROM` | A sender address authorized by the relay. |
+| `NOTIFICATION_DB` | A private, writable SQLite file on persistent storage for subscriptions and queued mail. Use one notification-enabled API instance per file. |
+| `FRONTEND_URL` | The browser-facing frontend origin used in confirmation and unsubscribe links. |
+
+Notifications are disabled when `NOTIFICATION_SMTP_URL` is absent. Visitors
+confirm their address using a one-time link. They can request updates when
+someone changes a vote, or a one-time update when a response or confirmed
+attendance target is reached. Pending updates can be grouped into one
+email. SMTP failures are retried, and each email includes a stop link.
+
 ### Self-hosted URLs and listening address
 
 Set the API's `FRONTEND_URL` to the browser-facing frontend origin, for example

@@ -83,6 +83,25 @@
     "inside": "Ene de la maldormaj horoj en ĉiuj zonoj",
     "outside": "Ekster la maldormaj horoj en almenaŭ unu zono"
   },
+  "notifications": {
+    "title": "Sciigoj pri voĉdonoj",
+    "when": "Retpoŝtu al mi kiam",
+    "change": "Iu sendas aŭ ĝisdatigas sian disponeblon",
+    "responses": "Fiksita nombro da homoj respondis",
+    "quorum": "Fiksita nombro da homoj disponeblas je la sama dato aŭ horo",
+    "count": "Nombro da homoj",
+    "subscribe": "Sendi konfirman retmesaĝon",
+    "check_email": "Kontrolu vian enirkeston por konfirma ligilo.",
+    "confirm_prompt": "Konfirmu, ke vi volas ricevi sciigojn pri ĉi tiu voĉdono.",
+    "confirm": "Konfirmi sciigojn",
+    "active": "Sciigoj pri voĉdonoj estas ŝaltitaj.",
+    "stop_prompt": "Ĉu ĉesigi sciigojn pri ĉi tiu voĉdono?",
+    "stop": "Ĉesigi sciigojn",
+    "stopped": "Sciigoj pri voĉdonoj estas malŝaltitaj.",
+    "expired": "Ĉi tiu konfirma ligilo eksvalidiĝis aŭ jam estis uzita.",
+    "invalid": "Kontrolu la retpoŝtadreson kaj nombron da homoj.",
+    "failed": "Ne eblis ŝanĝi la sciigojn pri voĉdonoj. Reprovu."
+  },
   "tentative": {
     "mode": "Marki disponeblon kiel",
     "firm": "Disponebla",

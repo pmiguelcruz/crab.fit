@@ -25,6 +25,7 @@ use crate::docs::ApiDoc;
 mod adaptors;
 mod docs;
 mod errors;
+mod notifications;
 mod payloads;
 mod routes;
 mod sessions;
@@ -33,6 +34,7 @@ pub struct ApiState<A> {
     adaptor: A,
     sessions: sessions::Sessions,
     admin_pin: sessions::AdminPin,
+    notifications: Option<Arc<notifications::Notifications>>,
 }
 
 pub type State<A> = extract::State<Arc<Mutex<ApiState<A>>>>;
@@ -44,10 +46,24 @@ async fn main() {
     // Load env
     dotenvy::dotenv().ok();
 
+    let frontend_url = env::var("FRONTEND_URL").unwrap_or_else(|_| {
+        if cfg!(debug_assertions) {
+            "http://localhost:1234".to_owned()
+        } else {
+            panic!("Missing FRONTEND_URL environment variable")
+        }
+    });
+    let notifications = notifications::Notifications::from_env(&frontend_url)
+        .await
+        .expect("Could not configure vote notifications");
+    if let Some(notifications) = &notifications {
+        tokio::spawn(notifications.clone().run());
+    }
     let shared_state = Arc::new(Mutex::new(ApiState {
         adaptor: create_adaptor().await,
         sessions: sessions::Sessions::default(),
         admin_pin: sessions::AdminPin::new(env::var("ADMIN_PIN").ok()),
+        notifications,
     }));
 
     // CORS configuration
@@ -56,14 +72,7 @@ async fn main() {
         .allow_headers([AUTHORIZATION, ACCEPT, CONTENT_TYPE])
         .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
         .allow_origin(
-            env::var("FRONTEND_URL")
-                .unwrap_or_else(|_| {
-                    if cfg!(debug_assertions) {
-                        "http://localhost:1234".to_owned()
-                    } else {
-                        panic!("Missing FRONTEND_URL environment variable")
-                    }
-                })
+            frontend_url
                 .parse::<HeaderValue>()
                 .expect("Invalid FRONTEND_URL"),
         );
@@ -105,6 +114,18 @@ async fn main() {
         .route("/event/:event_id", get(event::get_event))
         .route("/event/:event_id/people", get(person::get_people))
         .route("/event/:event_id/emails", get(person::get_shared_emails))
+        .route(
+            "/event/:event_id/notifications",
+            post(notification::subscribe),
+        )
+        .route(
+            "/event/:event_id/notifications/confirm",
+            post(notification::confirm),
+        )
+        .route(
+            "/event/:event_id/notifications/unsubscribe",
+            post(notification::unsubscribe),
+        )
         .route(
             "/event/:event_id/people/:person_name",
             get(person::get_person),

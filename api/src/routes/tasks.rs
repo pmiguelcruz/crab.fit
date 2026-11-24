@@ -35,12 +35,25 @@ pub async fn cleanup<A: Adaptor>(
 
     info!("Running cleanup task");
 
-    let adaptor = &state.lock().await.adaptor;
+    let state = state.lock().await;
+    let adaptor = &state.adaptor;
 
     let result = adaptor
         .delete_events(Utc::now() - Duration::days(90))
         .await
         .map_err(ApiError::AdaptorError)?;
+
+    if let Some(notifications) = &state.notifications {
+        match adaptor.list_events().await {
+            Ok(events) => {
+                let active_ids: Vec<_> = events.into_iter().map(|event| event.id).collect();
+                if let Err(error) = notifications.prune(&active_ids).await {
+                    tracing::warn!(%error, "Could not remove expired poll notifications");
+                }
+            }
+            Err(error) => tracing::warn!(%error, "Could not identify expired poll notifications"),
+        }
+    }
 
     info!(
         "Cleanup successful: {} events and {} people removed",

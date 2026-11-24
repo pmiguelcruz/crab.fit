@@ -25,6 +25,7 @@ import { slotMinutes } from '/src/utils/slotSize'
 import styles from './page.module.scss'
 import SharedEmails from './SharedEmails'
 import SubmissionReceipt from './SubmissionReceipt'
+import VoteNotifications from './VoteNotifications'
 
 interface EventAvailabilitiesProps {
   event?: EventResponse
@@ -289,8 +290,9 @@ const EventAvailabilities = ({ event }: EventAvailabilitiesProps) => {
       </div>
     </Content>
 
+    {event?.notifications_available && <VoteNotifications key={event.id} eventId={event.id} />}
     {tab === 'group' ? <>
-      {event && <SharedEmails key={event.id} eventId={event.id} />}
+      {event && <SharedEmails key={`emails-${event.id}`} eventId={event.id} />}
       <AvailabilityViewer
         times={expandedTimes}
         people={people}

@@ -91,6 +91,25 @@
     "inside": "Within awake hours in all zones",
     "outside": "Outside awake hours in at least one zone"
   },
+  "notifications": {
+    "title": "Vote notifications",
+    "when": "Email me when",
+    "change": "Someone submits or updates availability",
+    "responses": "A set number of people have responded",
+    "quorum": "A set number of people are available for the same date or time",
+    "count": "Number of people",
+    "subscribe": "Send confirmation email",
+    "check_email": "Check your inbox for a confirmation link.",
+    "confirm_prompt": "Confirm that you want vote notifications for this poll.",
+    "confirm": "Confirm notifications",
+    "active": "Vote notifications are on.",
+    "stop_prompt": "Stop vote notifications for this poll?",
+    "stop": "Stop notifications",
+    "stopped": "Vote notifications are off.",
+    "expired": "This confirmation link has expired or was already used.",
+    "invalid": "Check the email address and number of people.",
+    "failed": "Could not change vote notifications. Try again."
+  },
   "tentative": {
     "mode": "Mark availability as",
     "firm": "Available",

@@ -82,6 +82,7 @@ impl Adaptor for SqlAdaptor {
             tentative: Set(Some(json!(person.tentative))),
             group_id: Set(person.group_id),
             shared_email: Set(person.shared_email),
+            submitted_at: Set(person.submitted_at),
             event_id: Set(event_id.clone()),
         };
 
@@ -297,6 +298,7 @@ impl From<person::Model> for Person {
                 .unwrap_or_default(),
             group_id: value.group_id,
             shared_email: value.shared_email,
+            submitted_at: value.submitted_at,
         }
     }
 }

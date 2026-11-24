@@ -108,4 +108,5 @@ pub struct Person {
     pub tentative: Vec<String>,
     pub group_id: Option<String>,
     pub shared_email: Option<String>,
+    pub submitted_at: Option<i64>,
 }

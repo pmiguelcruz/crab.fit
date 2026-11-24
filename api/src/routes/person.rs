@@ -1,4 +1,4 @@
-use std::collections::{BTreeSet, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 
 use axum::{
     extract::{self, Path},
@@ -12,6 +12,7 @@ use email_address::{EmailAddress, Options as EmailOptions};
 
 use crate::{
     errors::ApiError,
+    notifications::VoteProgress,
     payloads::{ApiResult, PersonInput, PersonLogin, PersonResponse, Submission},
     sessions::{Session, PARTICIPANT_TTL},
     State,
@@ -161,6 +162,7 @@ pub async fn get_person<A: Adaptor>(
                         tentative: vec![],
                         group_id: None,
                         shared_email: None,
+                        submitted_at: None,
                     },
                 )
                 .await
@@ -260,23 +262,29 @@ pub async fn update_person<A: Adaptor>(
     availability.sort_unstable();
     availability.dedup();
 
-    let person = adaptor
+    let mut people = adaptor
         .get_people(event_id.clone())
         .await
         .map_err(ApiError::AdaptorError)?
-        .ok_or(ApiError::NotFound)?
-        .into_iter()
-        .find(|person| person.name == person_name)
         .ok_or(ApiError::NotFound)?;
-    let mut tentative = input.tentative.unwrap_or(person.tentative);
+    let index = people
+        .iter()
+        .position(|person| person.name == person_name)
+        .ok_or(ApiError::NotFound)?;
+    let person = people.swap_remove(index);
+    let mut tentative = input.tentative.unwrap_or_else(|| person.tentative.clone());
     tentative.retain(|time| slots.contains(time) && !firm.contains(time));
     tentative.sort_unstable();
     tentative.dedup();
+    let changed = !has_submitted(&person)
+        || !same_active_choices(&person.availability, &availability, &slots)
+        || !same_active_choices(&person.tentative, &tentative, &slots);
     let group_id = input
         .group_id
         .unwrap_or(person.group_id)
         .filter(|id| has_group(&event.groups, id));
     let shared_email = submitted_email.unwrap_or(person.shared_email);
+    let submitted_at = chrono::Utc::now().timestamp();
     let person = adaptor
         .upsert_person(
             event_id,
@@ -285,6 +293,7 @@ pub async fn update_person<A: Adaptor>(
                 tentative,
                 group_id,
                 shared_email,
+                submitted_at: Some(submitted_at),
                 ..person
             },
         )
@@ -292,14 +301,67 @@ pub async fn update_person<A: Adaptor>(
         .map_err(ApiError::AdaptorError)?
         .ok_or(ApiError::NotFound)?;
     state.sessions.revoke(token);
+    let notifications = state.notifications.clone();
+    drop(state);
+    if let Some(notifications) = notifications {
+        let progress = vote_progress(
+            people.iter().chain(std::iter::once(&person)),
+            &slots,
+            changed,
+        );
+        if let Err(error) = notifications
+            .record_vote(&event.id, &event.name, progress)
+            .await
+        {
+            tracing::warn!(%error, "Could not queue vote notifications");
+        }
+    }
 
     Ok(Json(Submission {
         person: person.into(),
-        submitted_at: chrono::Utc::now().timestamp(),
+        submitted_at,
     }))
 }
 
-fn normalize_shared_email(input: &str) -> Result<String, ()> {
+fn has_submitted(person: &Person) -> bool {
+    person.submitted_at.is_some()
+        || !person.availability.is_empty()
+        || !person.tentative.is_empty()
+        || person.group_id.is_some()
+        || person.shared_email.is_some()
+}
+
+fn same_active_choices(previous: &[String], current: &[String], slots: &HashSet<String>) -> bool {
+    let previous: HashSet<_> = previous
+        .iter()
+        .filter(|choice| slots.contains(*choice))
+        .collect();
+    previous == current.iter().collect()
+}
+
+fn vote_progress<'a>(
+    people: impl Iterator<Item = &'a Person>,
+    slots: &HashSet<String>,
+    changed: bool,
+) -> VoteProgress {
+    let mut responses = 0;
+    let mut votes = HashMap::new();
+    for person in people.filter(|person| has_submitted(person)) {
+        responses += 1;
+        for choice in person.availability.iter().collect::<HashSet<_>>() {
+            if slots.contains(choice) {
+                *votes.entry(choice).or_insert(0) += 1;
+            }
+        }
+    }
+    VoteProgress {
+        responses,
+        quorum: votes.into_values().max().unwrap_or(0),
+        changed,
+    }
+}
+
+pub(super) fn normalize_shared_email(input: &str) -> Result<String, ()> {
     let email = input.trim();
     if email.len() > 254 || email.chars().any(char::is_control) {
         return Err(());

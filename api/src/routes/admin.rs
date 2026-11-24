@@ -132,6 +132,11 @@ pub async fn delete_event<A: Adaptor>(
         return Err(ApiError::NotFound);
     }
     state.sessions.revoke_participant(&id, None);
+    if let Some(notifications) = &state.notifications {
+        if let Err(error) = notifications.remove_event(&id).await {
+            tracing::warn!(%error, "Could not remove deleted poll notifications");
+        }
+    }
     Ok(StatusCode::NO_CONTENT)
 }
 

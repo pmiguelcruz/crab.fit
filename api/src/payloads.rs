@@ -43,6 +43,8 @@ pub struct EventResponse {
     pub slot_size: Option<SlotSize>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub groups: Vec<GroupResponse>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub notifications_available: Option<bool>,
 }
 
 impl From<Event> for EventResponse {
@@ -54,6 +56,7 @@ impl From<Event> for EventResponse {
             timezone: value.timezone,
             slot_size: value.slot_size,
             created_at: value.created_at.timestamp(),
+            notifications_available: None,
             groups: value
                 .groups
                 .into_iter()
